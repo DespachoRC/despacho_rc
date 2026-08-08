@@ -1,7 +1,7 @@
 'use client';
 
-import { Input } from "@/app/components/ui/input";
-import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/Input";
+import { Button } from "@/app/components/ui/Button";
 import Image from "next/image";
 import Link from "next/link";
 

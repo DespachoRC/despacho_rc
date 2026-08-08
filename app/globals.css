@@ -1,1 +1,20 @@
 @import "tailwindcss";
+
+:root {
+  --gray: #F3F3F2;
+  --dark-gray: #E2E2E2;
+  --gray-text: #ADB5BD;
+  
+  --primary: #001845;
+  --primary-900: #000E29;
+}
+
+@theme inline {
+  --color-gray: var(--gray);
+  --color-dark-gray: var(--dark-gray);
+  --color-gray-text: var(--gray-text);
+
+  --color-primary: var(--primary);
+  --color-primary-900: var(--primary-900);
+}
+
