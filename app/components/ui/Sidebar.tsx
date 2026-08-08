@@ -34,7 +34,7 @@ export function Sidebar() {
                 />
             </div>
             <nav className="w-full h-5/8">
-                <ul className="w-full flex flex-col items-center gap-2 text-base">
+                <ul className="w-full flex flex-col items-center gap-2">
                     {navItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = pathname === item.href;

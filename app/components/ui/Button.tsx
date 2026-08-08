@@ -3,7 +3,7 @@ interface props {
     type?: "submit" | "reset" | "button",
     isLoading?: boolean,
     disabled?: boolean,
-    className?: string
+    className?: string,
 }
 
 export function Button({
@@ -11,7 +11,7 @@ export function Button({
     type = "button", 
     isLoading = false, 
     disabled,
-    className
+    className,
 }: props) {
     
     const isDisabled = disabled || isLoading;
@@ -21,7 +21,7 @@ export function Button({
         <button 
             type={type} 
             disabled={isDisabled} 
-            className={`w-full bg-blue-900 rounded-xl p-3 text-white disabled:opacity-50 cursor-pointer ${className}`}
+            className={`w-full bg-primary rounded-xl p-4 text-white disabled:opacity-50 cursor-pointer ${className}`}
         >
             {buttonText}
         </button>
