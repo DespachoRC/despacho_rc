@@ -48,6 +48,7 @@ export default function Login() {
                     <Button
                         text="Iniciar sesión"
                         type="submit"
+                        className="w-full p-4"
                     />
                     <Link href="/password-reset" className="w-full text-center">Olvidé mi contraseña</Link>
                 </div>

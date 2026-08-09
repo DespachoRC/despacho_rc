@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
     return(
-        <div className="w-screen h-screen grid grid-cols-[300_1fr] grid-rows-[90_1fr] gap-2 p-2">
+        <div className="w-screen h-screen grid grid-cols-[300_1fr] grid-rows-[90_1fr] gap-5 p-2">
             <Sidebar />
             <Header />
             <main>

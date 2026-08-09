@@ -1,9 +1,13 @@
+import { ReactNode } from "react";
+
 interface props {
-    text: string,
+    text?: string,
     type?: "submit" | "reset" | "button",
     isLoading?: boolean,
     disabled?: boolean,
     className?: string,
+    icon?: ReactNode,
+    iconPostion?: string
 }
 
 export function Button({
@@ -12,6 +16,8 @@ export function Button({
     isLoading = false, 
     disabled,
     className,
+    icon,
+    iconPostion = "left"
 }: props) {
     
     const isDisabled = disabled || isLoading;
@@ -21,8 +27,9 @@ export function Button({
         <button 
             type={type} 
             disabled={isDisabled} 
-            className={`w-full bg-primary rounded-xl p-4 text-white disabled:opacity-50 cursor-pointer ${className}`}
+            className={`flex justify-center items-center gap-6 bg-primary rounded-xl text-white disabled:opacity-50 cursor-pointer ${className}`}
         >
+            {icon}
             {buttonText}
         </button>
     );

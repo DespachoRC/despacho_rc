@@ -1,10 +1,11 @@
 import { ReactNode } from "react";
 
 interface props {
-    label: string,
-    htmlFor: string,
+    label?: string,
+    isLabelNeed?: boolean,
+    htmlFor?: string,
     type: string,
-    name: string,
+    name?: string,
     placeHolder?: string
     icon?: ReactNode,
     iconPosition?: "left" | "right"
@@ -12,6 +13,7 @@ interface props {
 
 export function Input({
     label,
+    isLabelNeed=true,
     htmlFor,
     type,
     name,
@@ -22,7 +24,7 @@ export function Input({
 
     return(
         <div className="w-full flex flex-col gap-2">
-            <label htmlFor={htmlFor}>{label}</label>
+            {isLabelNeed ? <label htmlFor={htmlFor}>{label}</label> : ""}
             <div className="relative w-full">
                 <input type={type} name={name} id={htmlFor} placeholder={placeHolder} className={`w-full bg-gray border border-gray rounded-xl p-4 focus:outline-dark-gray ${icon && iconPosition === "left" ? "pl-10" : "pr-10"}`} />
                 {icon && (

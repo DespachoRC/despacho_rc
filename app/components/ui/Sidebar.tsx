@@ -17,10 +17,10 @@ export function Sidebar() {
 
     const navItems = [
         { name: "Métricas", href: "/dashboard/metrics", icon: LuLayoutPanelLeft },
-        { name: "Gestión de usuarios", href: "/dashboard/users", icon: LuUsers },
-        { name: "Catálogos", href: "/dashboard/catalogos", icon: LuBookOpen },
-        { name: "Tareas y cotizaciones", href: "/dashboard/tareas", icon: LuClipboardList },
-        { name: "Carpetas generales", href: "/dashboard/carpetas", icon: LuFolderOpen },
+        { name: "Gestión de usuarios", href: "/dashboard/users-management", icon: LuUsers },
+        { name: "Catálogos", href: "/dashboard/catalogs", icon: LuBookOpen },
+        { name: "Tareas y cotizaciones", href: "/dashboard/tasks", icon: LuClipboardList },
+        { name: "Carpetas generales", href: "/dashboard/folders", icon: LuFolderOpen },
     ];
 
     return (
