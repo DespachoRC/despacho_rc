@@ -5,12 +5,44 @@ import { Button } from "@/app/components/ui/Button";
 import Image from "next/image";
 import Link from "next/link";
 import { LuMail, LuLock } from "react-icons/lu";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
-    const handleSubmit = async (e: React.SubmitEvent) => {
-        e.preventDefault()
+    const router = useRouter();
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
-        console.log("Iniciaste sesión!");
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setError(null);
+        setLoading(true);
+
+        const formData = new FormData(e.currentTarget);
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error ?? 'Error al iniciar sesión.');
+                return;
+            }
+
+            router.push('/dashboard');
+            router.refresh();
+        } catch {
+            setError('Error de conexión. Intenta de nuevo.');
+        } finally {
+            setLoading(false);
+        }
     }
 
     return(
@@ -26,7 +58,7 @@ export default function Login() {
             <div className="w-full max-w-130 flex flex-col text-center xl:text-lg font-semibold">
                 Ingresa tu correo electrónico y contraseña para ingresar a tu cuenta.
             </div>
-            <form onSubmit={handleSubmit} action="" method="post" className="w-full h-3/7 max-w-130 flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="w-full h-3/7 max-w-130 flex flex-col gap-4">
                 <Input
                     label="Correo:"
                     htmlFor="email"
@@ -44,11 +76,16 @@ export default function Login() {
                     icon={<LuLock />}
                 />
 
+                {error && (
+                    <p className="text-red-500 text-sm text-center">{error}</p>
+                )}
+
                 <div className="w-full flex flex-col gap-6 items-center mt-6">
                     <Button
                         text="Iniciar sesión"
                         type="submit"
                         className="w-full p-4"
+                        isLoading={loading}
                     />
                     <Link href="/password-reset" className="w-full text-center">Olvidé mi contraseña</Link>
                 </div>
