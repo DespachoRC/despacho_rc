@@ -12,82 +12,118 @@ const mockClienteId = 'mock-cliente-uuid-0000-000000000000';
 
 export class CotizacionesService {
 
-    // obtiene todas las cotizaciones con estatus pendiente de cotizar
+    // helper privado para buscar el UUID real en el catalogo sin quemar textos
+    private static async getEstatusId(nombreEstatus: string) {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('estatus_cotizacion') // catalogo de estatus
+            .select('id')
+            .eq('nombre', nombreEstatus)
+            .single();
+
+        if (error) throw new Error(`Estatus no encontrado en catálogo: ${nombreEstatus}`);
+        return data.id;
+    }
+
+    // obtiene todas las cotizaciones con estatus pendiente
     static async getPendientes() {
         const supabase = await createClient();
+        const estatusId = await this.getEstatusId('pendiente');
 
         const { data, error } = await supabase
             .from('cotizaciones')
             .select('*')
-            .eq('estatus', 'Pendiente de Cotizar')
+            .eq('estatus_id', estatusId)
             .order('created_at', { ascending: true });
 
         if (error) throw new Error(error.message);
-
         return data;
     }
 
-    // crea una fila en cotizaciones por cada servicio del array recibido
-    // la tabla solo acepta un servicio por registro (actividad_catalogo_id)
+    // crea cotizaciones e inserta sus documentos asociados de forma relacional
     static async createCotizacion(dto: CreateCotizacionDTO) {
         const supabase = await createClient();
+        const estatusId = await this.getEstatusId('pendiente');
 
-        // construimos el array de inserciones: una fila por servicio
-        const filas = dto.servicios.map((servicio) => ({
+        // 1. preparamos y creamos los registros de cotizacion
+        const filasCotizacion = dto.servicios.map((servicio) => ({
             cliente_id: mockClienteId,
             actividad_catalogo_id: servicio.catalogo_servicio_id,
             notas_cliente: servicio.notas ?? null,
-            archivos_adjuntos: servicio.archivos ?? null,
-            estatus: 'Pendiente de Cotizar',
+            estatus_id: estatusId,
         }));
 
-        const { data, error } = await supabase
+        const { data: cotizaciones, error: errorCotizacion } = await supabase
             .from('cotizaciones')
-            .insert(filas)
+            .insert(filasCotizacion)
             .select();
 
-        if (error) throw new Error(error.message);
+        if (errorCotizacion) throw new Error(errorCotizacion.message);
 
-        return data;
+        // 2. si hay archivos, los iteramos y los insertamos en la tabla documentos
+        const filasDocumentos: any[] = [];
+        dto.servicios.forEach((servicio, index) => {
+            if (servicio.archivos && servicio.archivos.length > 0) {
+                servicio.archivos.forEach((archivo: any) => {
+                    filasDocumentos.push({
+                        cotizacion_id: cotizaciones[index].id,
+                        cliente_id: mockClienteId,
+                        nombre_archivo: archivo.nombre,
+                        ruta_archivo: archivo.url,
+                    });
+                });
+            }
+        });
+
+        if (filasDocumentos.length > 0) {
+            const { error: errorDocs } = await supabase
+                .from('documentos')
+                .insert(filasDocumentos);
+            if (errorDocs) throw new Error(errorDocs.message);
+        }
+
+        return cotizaciones;
     }
 
-    // admin asigna precio y cambia estatus a enviada al cliente
+    // admin asigna precio y cambia estatus
     static async fijarPrecio(cotizacionId: string, dto: FijarPrecioDTO) {
         const supabase = await createClient();
+        const estatusId = await this.getEstatusId('enviada');
 
         const { data, error } = await supabase
             .from('cotizaciones')
             .update({
                 precio: dto.precio,
                 notas_admin: dto.notas_admin ?? null,
-                estatus: 'Enviada al Cliente',
-                admin_id: mockAdminId,
+                estatus_id: estatusId,
             })
             .eq('id', cotizacionId)
             .select()
             .single();
 
         if (error) throw new Error(error.message);
-
         return data;
     }
 
-    // cliente responde aceptando o rechazando la cotizacion
+    // cliente responde aceptando o rechazando
     static async responderCotizacion(cotizacionId: string, dto: ResponderCotizacionDTO) {
         const supabase = await createClient();
+
+        // mapeamos la respuesta del DTO (Aceptada/Rechazada) al nombre en BD
+        const estatusNombre = dto.respuesta === 'Aceptada' ? 'aceptada' : 'rechazada';
+        const estatusId = await this.getEstatusId(estatusNombre);
 
         const { data, error } = await supabase
             .from('cotizaciones')
             .update({
-                estatus: dto.respuesta, // "Aceptada" o "Rechazada"
+                estatus_id: estatusId,
             })
             .eq('id', cotizacionId)
-            .eq('cliente_id', mockClienteId) // validamos que la cotizacion pertenezca al cliente
+            .eq('cliente_id', mockClienteId) // capa extra de seguridad
             .select()
             .single();
 
         if (error) throw new Error(error.message);
-
         return data;
     }
 }
