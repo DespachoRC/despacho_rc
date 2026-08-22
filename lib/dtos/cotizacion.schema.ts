@@ -23,15 +23,15 @@ export const CreateCotizacionSchema = z.object({
 // paso 2: admin fija el precio de una cotizacion individual
 export const FijarPrecioSchema = z.object({
     precio: z
-        .number({ invalid_type_error: "El precio debe ser un numero" })
+        .number({ error: "El precio debe ser un numero valido" })
         .positive("El precio debe ser mayor a cero"),
     notas_admin: z.string().max(500).optional(),
 });
 
 // paso 3: cliente acepta o rechaza la cotizacion enviada
 export const ResponderCotizacionSchema = z.object({
-    respuesta: z.enum(["Aceptada", "Rechazada"], {
-        errorMap: () => ({ message: "La respuesta debe ser 'Aceptada' o 'Rechazada'" }),
+    respuesta: z.enum(["Aceptada", "Rechazada"] as const, {
+        error: "La respuesta debe ser 'Aceptada' o 'Rechazada'",
     }),
 });
 
