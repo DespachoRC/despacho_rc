@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { ActividadesService } from '@/lib/services/actividades.service';
-import { SubirEntregableSchema } from '@/lib/dtos/actividad.schema';
+import { ActividadesService } from '@/core/services/actividades.service';
+import { SubirEntregableSchema } from '@/core/schemas/actividad.schema';
 
 // contador sube el archivo final y marca la actividad como completada
 export async function POST(

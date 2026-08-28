@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { ActividadesService } from '@/lib/services/actividades.service';
-import { ActualizarEstatusSchema } from '@/lib/dtos/actividad.schema';
+import { ActividadesService } from '@/core/services/actividades.service';
+import { ActualizarEstatusSchema } from '@/core/schemas/actividad.schema';
 
 // contador actualiza el estatus de la actividad a en_proceso o bloqueada
 export async function PUT(

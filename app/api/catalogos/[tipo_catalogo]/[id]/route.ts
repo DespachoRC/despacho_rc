@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CatalogosService } from '@/lib/services/catalogos.service';
-import { ToggleEstatusSchema } from '@/lib/dtos/catalogo_carpeta.schema';
+import { CatalogosService } from '@/core/services/catalogos.service';
+import { ToggleEstatusSchema } from '@/core/schemas/catalogo_carpeta.schema';
 
 // patch: activa o desactiva un registro del catalogo (soft delete o reactivacion)
 export async function PATCH(

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { UsuariosService } from '@/lib/services/usuarios.service';
-import { AsignarContadorSchema } from '@/lib/dtos/usuarios.schema';
+import { UsuariosService } from '@/core/services/usuarios.service';
+import { AsignarContadorSchema } from '@/core/schemas/usuarios.schema';
 
 // put: admin asigna o reasigna el contador responsable de un cliente
 export async function PUT(

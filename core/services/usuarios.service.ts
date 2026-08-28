@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
-import { AsignarContadorDTO, CrearUsuarioDTO } from '../dtos/usuarios.schema';
+import { createClient } from '@/core/db/server';
+import { AsignarContadorDTO, CrearUsuarioDTO } from '../schemas/usuarios.schema';
 
 export class UsuariosService {
 

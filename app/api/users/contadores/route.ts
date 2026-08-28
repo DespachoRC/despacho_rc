@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { UsuariosService } from '@/lib/services/usuarios.service';
+import { UsuariosService } from '@/core/services/usuarios.service';
 
 // get: lista los contadores activos disponibles para la vista de asignacion de cartera
 export async function GET() {

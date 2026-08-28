@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { CotizacionesService } from '@/lib/services/cotizaciones.service';
-import { FijarPrecioSchema } from '@/lib/dtos/cotizacion.schema';
+import { CotizacionesService } from '@/core/services/cotizaciones.service';
+import { FijarPrecioSchema } from '@/core/schemas/cotizacion.schema';
 
 // put: admin fija el precio y cambia estatus a enviada al cliente
 export async function PUT(

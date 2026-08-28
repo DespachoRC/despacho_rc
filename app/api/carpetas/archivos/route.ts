@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { CarpetasService } from '@/lib/services/carpetas.service';
-import { SubirArchivoGeneralSchema } from '@/lib/dtos/catalogo_carpeta.schema';
+import { CarpetasService } from '@/core/services/carpetas.service';
+import { SubirArchivoGeneralSchema } from '@/core/schemas/catalogo_carpeta.schema';
 
 // post: cliente sube un archivo a la carpeta general sin vincular cotizacion ni actividad
 export async function POST(request: Request) {

@@ -1,6 +1,6 @@
 //importacion de conexion a supa 
-import { createClient } from '@/lib/supabase/server';
-import { CreateUserDTO } from '../dtos/users.schema';
+import { createClient } from '@/core/db/server';
+import { CreateUserDTO } from '../schemas/users.schema';
 
 export class UsersService {
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { UsuariosService } from '@/lib/services/usuarios.service';
-import { CrearUsuarioSchema } from '@/lib/dtos/usuarios.schema';
+import { UsuariosService } from '@/core/services/usuarios.service';
+import { CrearUsuarioSchema } from '@/core/schemas/usuarios.schema';
 
 // post: admin crea un nuevo cliente o contador en el sistema
 export async function POST(request: Request) {

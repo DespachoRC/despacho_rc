@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
-import { SubirArchivoGeneralDTO } from '../dtos/catalogo_carpeta.schema';
+import { createClient } from '@/core/db/server';
+import { SubirArchivoGeneralDTO } from '../schemas/catalogo_carpeta.schema';
 
 // mock temporal hasta que el middleware de auth este listo
 const mockClienteId = 'mock-cliente-uuid-0000-000000000000';

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { CotizacionesService } from '@/lib/services/cotizaciones.service';
-import { ResponderCotizacionSchema } from '@/lib/dtos/cotizacion.schema';
+import { CotizacionesService } from '@/core/services/cotizaciones.service';
+import { ResponderCotizacionSchema } from '@/core/schemas/cotizacion.schema';
 
 // put: cliente acepta o rechaza la cotizacion enviada por el admin
 export async function PUT(

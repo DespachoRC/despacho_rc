@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { CotizacionesService } from '@/lib/services/cotizaciones.service';
-import { CreateCotizacionSchema } from '@/lib/dtos/cotizacion.schema';
+import { CotizacionesService } from '@/core/services/cotizaciones.service';
+import { CreateCotizacionSchema } from '@/core/schemas/cotizacion.schema';
 
 // get: admin obtiene las cotizaciones pendientes de cotizar
 export async function GET() {

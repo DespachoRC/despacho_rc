@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { UsuariosService } from '@/lib/services/usuarios.service';
+import { UsuariosService } from '@/core/services/usuarios.service';
 
 // delete: ejecuta la baja logica — setea activo = false, no elimina el registro
 export async function DELETE(

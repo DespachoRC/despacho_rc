@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CatalogosService } from '@/lib/services/catalogos.service';
-import { CrearCatalogoSchema } from '@/lib/dtos/catalogo_carpeta.schema';
+import { CatalogosService } from '@/core/services/catalogos.service';
+import { CrearCatalogoSchema } from '@/core/schemas/catalogo_carpeta.schema';
 
 // get: lista registros del catalogo — acepta query param ?activos=true
 export async function GET(

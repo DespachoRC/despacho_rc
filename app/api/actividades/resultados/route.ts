@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ActividadesService } from '@/lib/services/actividades.service';
+import { ActividadesService } from '@/core/services/actividades.service';
 
 // cliente consulta sus actividades con estatus y urls de descarga si estan listas
 export async function GET() {

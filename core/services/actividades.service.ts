@@ -1,6 +1,6 @@
 // importacion de conexion a supabase y tipos del modulo
-import { createClient } from '@/lib/supabase/server';
-import { ActualizarEstatusDTO, SubirEntregableDTO } from '../dtos/actividad.schema';
+import { createClient } from '@/core/db/server';
+import { ActualizarEstatusDTO, SubirEntregableDTO } from '../schemas/actividad.schema';
 
 // mock temporal hasta que el middleware de auth este listo
 const mockContadorId = 'mock-contador-uuid-0000-000000000000';

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/core/db/server';
 
 // tablas permitidas para el crud de catalogos — cualquier otro valor es rechazado
 const TABLAS_PERMITIDAS = [

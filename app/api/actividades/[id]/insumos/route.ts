@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ActividadesService } from '@/lib/services/actividades.service';
+import { ActividadesService } from '@/core/services/actividades.service';
 
 // contador obtiene notas y archivos del cliente en la cotizacion asociada
 export async function GET(

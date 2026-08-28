@@ -1,10 +1,10 @@
 // importacion de conexion a supabase y tipos del modulo
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/core/db/server';
 import {
     CreateCotizacionDTO,
     FijarPrecioDTO,
     ResponderCotizacionDTO,
-} from '../dtos/cotizacion.schema';
+} from '../schemas/cotizacion.schema';
 
 // mock temporal hasta que el middleware de auth este listo
 const mockAdminId = 'mock-admin-uuid-0000-000000000000';
