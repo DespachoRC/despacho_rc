@@ -7,7 +7,8 @@ interface props {
     disabled?: boolean,
     className?: string,
     icon?: ReactNode,
-    iconPostion?: string
+    iconPostion?: string,
+    onClick?: () => void,
 }
 
 export function Button({
@@ -17,7 +18,8 @@ export function Button({
     disabled,
     className,
     icon,
-    iconPostion = "left"
+    iconPostion = "left",
+    onClick,
 }: props) {
     
     const isDisabled = disabled || isLoading;
@@ -26,7 +28,8 @@ export function Button({
     return (
         <button 
             type={type} 
-            disabled={isDisabled} 
+            disabled={isDisabled}
+            onClick={onClick}
             className={`flex justify-center items-center gap-6 bg-primary rounded-xl text-white disabled:opacity-50 cursor-pointer ${className}`}
         >
             {icon}
