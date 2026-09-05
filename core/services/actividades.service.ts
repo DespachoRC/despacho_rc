@@ -1,6 +1,7 @@
 // importacion de conexion a supabase y tipos del modulo
 import { createClient } from '@/core/db/server';
 import { ActualizarEstatusDTO, SubirEntregableDTO } from '../schemas/actividad.schema';
+import { ActividadesRepository } from '../repositories/actividades.repository';
 
 // mock temporal hasta que el middleware de auth este listo
 const mockContadorId = 'mock-contador-uuid-0000-000000000000';
@@ -9,18 +10,14 @@ const mockClienteId = 'mock-cliente-uuid-0000-000000000000';
 export class ActividadesService {
 
     // buscamos el uuid del estatus en el catalogo por su nombre
-    private static async getEstatusId(nombre: string): Promise<string> {
-        const supabase = await createClient();
-        const { data, error } = await supabase
-            .from('estatus_actividad')
-            .select('id')
-            .eq('nombre', nombre)
-            .single();
-
-        if (error || !data) throw new Error(`Estatus no encontrado en catalogo: ${nombre}`);
-        return data.id as string;
+    static async get_actividad(id: string): Promise<any> {
+        const data = await ActividadesRepository.get_actividad_data(id);
+        return data
     }
 
+    private static async getEstatusId(name:string): Promise<any>{
+
+    }
     // devuelve las notas y archivos que el cliente subio en la cotizacion asociada
     static async getInsumos(actividadId: string) {
         const supabase = await createClient();

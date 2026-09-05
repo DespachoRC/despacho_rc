@@ -11,9 +11,16 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  if (email.toLowerCase() === password.toLowerCase()) {
+    return NextResponse.json(
+      { error: 'La contraseña no puede ser igual al correo' },
+      { status: 400 }
+    )
+  }
+
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
     return NextResponse.json(
@@ -22,5 +29,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  return NextResponse.json({ success: true }, { status: 200 })
+  return NextResponse.json({
+    success: true,
+    user: data.user,
+    access_token: data.session.access_token,
+    refresh_token: data.session.refresh_token
+  }, { status: 200 })
 }
