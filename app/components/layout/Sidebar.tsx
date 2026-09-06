@@ -12,6 +12,7 @@ import {
     LuUpload,
     LuReceiptText,
     LuChartBar,
+    LuBriefcase,
 } from "react-icons/lu";
 import Image from "next/image";
 
@@ -39,8 +40,16 @@ export function Sidebar({ rol }: SidebarProps) {
         { name: "Mis Resultados", href: "/cliente/dashboard/results", icon: LuChartBar },
     ];
 
+    // rutas del panel de contador
+    const contadorNavItems = [
+        { name: "Mis Clientes", href: "/contador/dashboard/clients", icon: LuBriefcase },
+    ];
+
     // selecciona el set de rutas segun el rol recibido
-    const navItems = rol === "cliente" ? clienteNavItems : adminNavItems;
+    const navItems =
+        rol === "cliente"  ? clienteNavItems  :
+        rol === "contador" ? contadorNavItems :
+        adminNavItems;
 
     return (
         <aside className="row-span-2 flex flex-col justify-between items-center bg-primary rounded-2xl py-8">

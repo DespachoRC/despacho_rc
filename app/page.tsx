@@ -27,7 +27,7 @@ const roles = [
     },
     {
         label: "Contador",
-        href: "/contador/dashboard",
+        href: "/contador/dashboard/clients",
         icon: LuCalculator,
         color: "bg-orange-600 hover:bg-orange-700",
         descripcion: "Actividades asignadas, entregables y cartera de clientes",
