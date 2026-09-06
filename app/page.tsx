@@ -20,7 +20,7 @@ const roles = [
     },
     {
         label: "Cliente",
-        href: "/cliente/dashboard",
+        href: "/cliente/dashboard/upload",
         icon: LuUser,
         color: "bg-emerald-600 hover:bg-emerald-700",
         descripcion: "Cotizaciones, tareas en progreso y carpeta de archivos",
