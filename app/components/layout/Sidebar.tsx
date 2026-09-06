@@ -30,7 +30,7 @@ export function Sidebar({ rol }: SidebarProps) {
     ];
 
     return (
-        <aside className="row-span-2 flex flex-col justify-evenly items-center bg-primary rounded-2xl">
+        <aside className="row-span-2 flex flex-col justify-between items-center bg-primary rounded-2xl py-8">
             <div className="w-full flex justify-center">
                 <Image
                     src="/logo.png"
