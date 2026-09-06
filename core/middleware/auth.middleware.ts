@@ -36,15 +36,15 @@ export async function authMiddleware(request: NextRequest) {
 
     const { pathname } = request.nextUrl
 
-    // si el usuario no esta autenticado y accede a una ruta protegida, redirige al login
-    if (!user && pathname.startsWith('/dashboard')) {
-        return NextResponse.redirect(new URL('/auth/login', request.url))
-    }
+    // dev bypass: redireccion desactivada temporalmente para desarrollo de vistas
+    // if (!user && pathname.startsWith('/dashboard')) {
+    //     return NextResponse.redirect(new URL('/auth/login', request.url))
+    // }
 
-    // si el usuario ya esta autenticado y accede al login, redirige al dashboard
-    if (user && pathname.startsWith('/auth')) {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
+    // dev bypass: redireccion desactivada temporalmente para desarrollo de vistas
+    // if (user && pathname.startsWith('/auth')) {
+    //     return NextResponse.redirect(new URL('/dashboard', request.url))
+    // }
 
     return response
 }
