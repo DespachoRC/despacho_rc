@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ActividadesService } from '@/core/services/actividades.service';
 
 // cliente consulta sus actividades con estatus y urls de descarga si estan listas
-export async function GET() {
+export async function GET(_request: Request,) {
     try {
         const data = await ActividadesService.getResultados();
         return NextResponse.json({ success: true, data }, { status: 200 });

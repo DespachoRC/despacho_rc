@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
-import { UsuariosService } from '@/core/services/usuarios.service';
-import { CrearUsuarioSchema } from '@/core/schemas/usuarios.schema';
+import { UsersService } from '@/core/services/users.service';
+import { CreateUserSchema } from '@/core/schemas/users.schema';
+import { createClient } from '@/core/db/server';
 
-// post: admin crea un nuevo cliente o contador en el sistema
+
+// post: admi un nuevo usuario (cliente o contador) en su organizacion
 export async function POST(request: Request) {
     try {
-        const body = await request.json();
 
-        // validamos campos base y la regla cruzada de rol vs campos opcionales
-        const parsed = CrearUsuarioSchema.safeParse(body);
+        
+        const body = await request.json();
+        const parsed = CreateUserSchema.safeParse(body);
 
         if (!parsed.success) {
             return NextResponse.json(
@@ -17,8 +19,9 @@ export async function POST(request: Request) {
             );
         }
 
-        const data = await UsuariosService.createUsuario(parsed.data);
+        const data = await UsersService.SingUp(parsed.data, request);
         return NextResponse.json({ success: true, data }, { status: 201 });
+
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error interno del servidor';
         return NextResponse.json({ success: false, error: message }, { status: 500 });
