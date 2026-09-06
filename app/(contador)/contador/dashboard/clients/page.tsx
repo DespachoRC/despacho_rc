@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { KpiCard } from "@/app/components/ui/KpiCard";
 import { Badge } from "@/app/components/ui/Badge";
 import {
@@ -74,8 +75,9 @@ export default function ClientsPage() {
             {/* grid de tarjetas de clientes — 2 columnas */}
             <div className="grid grid-cols-2 gap-4">
                 {clientes.map((cliente) => (
-                    <div
+                    <Link
                         key={cliente.id}
+                        href="/contador/dashboard/clients/details"
                         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-md transition-shadow cursor-pointer"
                     >
                         {/* icono y datos del cliente */}
@@ -106,7 +108,7 @@ export default function ClientsPage() {
                                 </span>
                             </div>
                         )}
-                    </div>
+                    </Link>
                 ))}
             </div>
         </div>
