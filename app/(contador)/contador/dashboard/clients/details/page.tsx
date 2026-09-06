@@ -189,26 +189,133 @@ export default function ClientDetailsPage() {
             )}
 
             {activeTab === "entregables" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-12 text-center shadow-sm space-y-3">
-                    <div className="w-12 h-12 bg-blue-50 text-primary rounded-xl flex items-center justify-center mx-auto">
-                        <LuUpload className="w-6 h-6" />
+                <div className="bg-white rounded-xl border border-gray-100 p-8 shadow-sm max-w-xl space-y-6">
+                    {/* titulo de la seccion */}
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">
+                            Subir Entregable
+                        </h2>
                     </div>
-                    <h3 className="text-base font-bold text-gray-900">Cargar Entregables</h3>
-                    <p className="text-sm text-gray-500 max-w-md mx-auto">
-                        Aquí podrás subir declaraciones, acusaciones y reportes para Grupo Monterrey SA de CV.
-                    </p>
+
+                    {/* selector de tarea y periodo (id) */}
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-400 tracking-wider block uppercase">
+                            Tarea · Periodo (ID)
+                        </label>
+                        <select
+                            defaultValue="[T-001] Declaración Mensual IVA — Mayo 2025"
+                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer"
+                        >
+                            <option value="[T-001] Declaración Mensual IVA — Mayo 2025">
+                                [T-001] Declaración Mensual IVA — Mayo 2025
+                            </option>
+                            <option value="[T-002] Declaración Mensual IVA — Junio 2025">
+                                [T-002] Declaración Mensual IVA — Junio 2025
+                            </option>
+                            <option value="[T-003] Contabilidad General — Junio 2025">
+                                [T-003] Contabilidad General — Junio 2025
+                            </option>
+                            <option value="[T-004] Cálculo de Nómina — Mayo 2025">
+                                [T-004] Cálculo de Nómina — Mayo 2025
+                            </option>
+                        </select>
+                        <p className="text-xs text-gray-400 font-medium pt-0.5">
+                            ID único por tarea para evitar confusión entre solicitudes del mismo tipo.
+                        </p>
+                    </div>
+
+                    {/* zona de carga de archivos (border-dashed) */}
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-gray-400 tracking-wider block uppercase">
+                            Archivo Entregable
+                        </label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center bg-gray-50/40 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <LuUpload className="w-6 h-6 text-gray-400" />
+                            <span className="text-sm font-semibold text-gray-700">
+                                Arrastra aquí el documento entregable final
+                            </span>
+                            <span className="text-xs text-gray-400 font-normal">
+                                PDF, ZIP, XML, imágenes · Máx. 20 MB c/u
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* boton para subir documento y notificar al cliente */}
+                    <button
+                        type="button"
+                        className="w-full bg-primary hover:bg-primary-900 text-white font-semibold py-3.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 text-sm shadow-sm"
+                    >
+                        <LuUpload className="w-4 h-4" />
+                        Subir Documento y Notificar al Cliente
+                    </button>
                 </div>
             )}
 
             {activeTab === "carpeta" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-12 text-center shadow-sm space-y-3">
-                    <div className="w-12 h-12 bg-blue-50 text-primary rounded-xl flex items-center justify-center mx-auto">
-                        <LuFolder className="w-6 h-6" />
+                <div className="bg-white rounded-xl border border-gray-100 p-8 shadow-sm max-w-3xl space-y-6">
+                    {/* titulo e informacion de la carpeta general del cliente */}
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg mt-0.5">
+                            <LuFolder className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900">
+                                Carpeta General — Grupo Monterrey SA de CV
+                            </h2>
+                            <p className="text-sm text-gray-400 font-normal">
+                                Documentos generales subidos por el cliente. Solo lectura.
+                            </p>
+                        </div>
                     </div>
-                    <h3 className="text-base font-bold text-gray-900">Carpeta General</h3>
-                    <p className="text-sm text-gray-500 max-w-md mx-auto">
-                        Expediente digital y documentos permanentes de la empresa.
-                    </p>
+
+                    {/* seccion tickets */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase">
+                                Tickets
+                            </span>
+                            <span className="text-xs font-medium text-gray-400">
+                                2 archivos
+                            </span>
+                        </div>
+                        <div className="space-y-2">
+                            <FileAttachment nombreArchivo="ticket_combustible_jun.pdf" />
+                            <FileAttachment nombreArchivo="ticket_papeleria_jun.jpg" />
+                        </div>
+                    </div>
+
+                    {/* seccion documentos de afiliacion — solo lectura estado vacio */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase">
+                                Documentos de Afiliación
+                            </span>
+                            <span className="text-xs font-medium text-gray-400">
+                                0 archivos
+                            </span>
+                        </div>
+                        <div className="bg-gray-50/70 p-4 rounded-xl border border-gray-100">
+                            <p className="text-xs text-gray-400 font-normal italic">
+                                El cliente aún no ha subido archivos en esta sección.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* seccion facturas */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase">
+                                Facturas
+                            </span>
+                            <span className="text-xs font-medium text-gray-400">
+                                2 archivos
+                            </span>
+                        </div>
+                        <div className="space-y-2">
+                            <FileAttachment nombreArchivo="factura_proveedor_001.xml" />
+                            <FileAttachment nombreArchivo="factura_proveedor_002.xml" />
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
