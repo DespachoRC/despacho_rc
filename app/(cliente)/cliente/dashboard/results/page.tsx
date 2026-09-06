@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/app/components/ui/Badge";
+import { ChatBox } from "@/app/components/ui/ChatBox";
 import {
     LuFileText,
     LuDownload,
@@ -25,18 +27,43 @@ const historial: {
     fechaEntrega: string | null;
     estatus: Estatus;
 }[] = [
-    { id: 1, tipo: "Declaración Mensual ISR", periodo: "Mayo 2025", fechaEntrega: "05 Jun 2025", estatus: "Listo" },
-    { id: 2, tipo: "Declaración Mensual IVA", periodo: "Mayo 2025", fechaEntrega: "06 Jun 2025", estatus: "Listo" },
-    { id: 3, tipo: "Cálculo de Nómina",       periodo: "Mayo 2025", fechaEntrega: "07 Jun 2025", estatus: "Listo" },
+    { id: 1, tipo: "Declaración Mensual ISR", periodo: "Mayo 2025",  fechaEntrega: "05 Jun 2025", estatus: "Listo" },
+    { id: 2, tipo: "Declaración Mensual IVA", periodo: "Mayo 2025",  fechaEntrega: "06 Jun 2025", estatus: "Listo" },
+    { id: 3, tipo: "Cálculo de Nómina",       periodo: "Mayo 2025",  fechaEntrega: "07 Jun 2025", estatus: "Listo" },
     { id: 4, tipo: "Declaración Mensual ISR", periodo: "Junio 2025", fechaEntrega: "05 Jul 2025", estatus: "En Proceso" },
     { id: 5, tipo: "Declaración Mensual IVA", periodo: "Junio 2025", fechaEntrega: null,          estatus: "Pendiente" },
 ];
 
+// mensajes mock del chat con la contadora
+const mensajesContadora = [
+    {
+        id: "1",
+        text: "Buenos días, ¿ya pudo subir los estados de cuenta de junio?",
+        sender: "cliente" as const,
+        time: "09:15",
+    },
+    {
+        id: "2",
+        text: "Sí, los acabo de cargar. Son 3 archivos PDF.",
+        sender: "despacho" as const,
+        time: "09:47",
+    },
+    {
+        id: "3",
+        text: "Perfecto, los revisaré y le aviso si necesito algo más. En aprox. 48 hrs tendrá su declaración.",
+        sender: "cliente" as const,
+        time: "09:50",
+    },
+];
+
 export default function ResultsPage() {
+    // controla visibilidad del chat con la contadora
+    const [chatAbierto, setChatAbierto] = useState(true);
+
     return (
         <div className="flex flex-col gap-6 p-6">
 
-            {/* encabezado con boton de chat a la derecha */}
+            {/* encabezado con boton toggle de chat a la derecha */}
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">
@@ -47,12 +74,23 @@ export default function ResultsPage() {
                     </p>
                 </div>
 
-                {/* boton de chat con la contadora */}
-                <button className="flex items-center gap-2 shrink-0 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-colors cursor-pointer">
+                {/* boton que hace toggle del chat */}
+                <button
+                    onClick={() => setChatAbierto(!chatAbierto)}
+                    className="flex items-center gap-2 shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-colors cursor-pointer"
+                >
                     <LuMessageSquare className="w-4 h-4" />
                     Chat con Contadora
                 </button>
             </div>
+
+            {/* chat con la contadora — visible cuando chatAbierto es true */}
+            {chatAbierto && (
+                <ChatBox
+                    nombreCliente="Ana Martínez García (Contadora)"
+                    initialMessages={mensajesContadora}
+                />
+            )}
 
             {/* contenedor tipo tarjeta con la tabla */}
             <div className="bg-white rounded-2xl border border-gray-200 p-5">
