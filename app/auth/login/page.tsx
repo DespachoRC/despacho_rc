@@ -36,26 +36,24 @@ export default function Login() {
                 return;
             }
 
-            // determina la ruta destino segun el rol o correo del usuario
+            // determina la ruta destino dinamicamente segun el rol del usuario
             const user = data.user;
             const rol = String(
                 user?.user_metadata?.rol ||
                 user?.user_metadata?.role ||
+                user?.user_metadata?.rol_nombre ||
                 user?.user_metadata?.rol_id ||
                 ""
             ).toLowerCase();
-            const cleanEmail = email.toLowerCase().trim();
 
             let redirectUrl = "/dashboard/metrics";
 
-            if (rol.includes("contador") || cleanEmail.includes("lriozcristobal") || cleanEmail.includes("contador")) {
+            if (rol.includes("contador")) {
                 redirectUrl = "/contador/dashboard/clients";
-            } else if (rol.includes("cliente") || cleanEmail.includes("luispm2424") || cleanEmail.includes("cliente")) {
+            } else if (rol.includes("cliente")) {
                 redirectUrl = "/cliente/dashboard/upload";
-            } else if (cleanEmail.includes("juan.garcia") || cleanEmail.includes("omakod") || rol.includes("admin")) {
-                // nota: la carpeta (superadmin) esta vacia, enviamos a metrics de admin
-                redirectUrl = "/dashboard/metrics";
             } else {
+                // administradores, superadmin o cualquier rol administrativo
                 redirectUrl = "/dashboard/metrics";
             }
 
