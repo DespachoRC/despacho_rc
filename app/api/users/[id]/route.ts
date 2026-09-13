@@ -1,14 +1,29 @@
 import { NextResponse } from 'next/server';
-import { UsuariosService } from '@/core/services/usuarios.service';
+import { UsersService } from '@/core/services/users.service';
 
-// delete: ejecuta la baja logica — setea activo = false, no elimina el registro
-export async function DELETE(
-    _request: Request,
+// get: obtener un usuario por id
+export async function GET(
+    request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id } = await params;
-        const data = await UsuariosService.bajaLogica(id);
+        const data = await UsersService.getById(id, request);
+        return NextResponse.json({ success: true, data }, { status: 200 });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error interno del servidor';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
+    }
+}
+
+// delete: baja logica — cambia estatus a inactivo
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const { id } = await params;
+        const data = await UsersService.bajaLogica(id, request);
         return NextResponse.json({ success: true, data }, { status: 200 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error interno del servidor';

@@ -2,9 +2,8 @@ import { createClient } from '@/core/db/server'
 import { NextResponse } from 'next/server'
 
 export async function POST() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
+    const supabase = await createClient()
+    await supabase.auth.signOut()
 
-  const response = NextResponse.redirect(new URL('/auth/login', 'http://localhost:3000'))
-  return response
+    return NextResponse.json({ success: true, message: 'Sesión cerrada' }, { status: 200 })
 }
