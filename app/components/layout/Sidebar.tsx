@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
     LuLayoutPanelLeft, 
     LuUsers, 
@@ -23,6 +23,21 @@ interface SidebarProps {
 
 export function Sidebar({ rol }: SidebarProps) {
     const pathname = usePathname();
+    const router = useRouter();
+
+    // destruye la sesion de forma segura en el servidor y redirige al login
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+            });
+        } catch (error) {
+            console.error("Error al cerrar sesión:", error);
+        } finally {
+            router.push('/auth/login');
+            router.refresh();
+        }
+    };
 
     // rutas del panel de administrador
     const adminNavItems = [
@@ -85,10 +100,14 @@ export function Sidebar({ rol }: SidebarProps) {
                     })}
                 </ul>
             </nav>
-            <div className="w-9/10 flex items-center gap-4 text-white py-4 pl-4 rounded-xl cursor-pointer hover:bg-primary-900 transition-colors">
+            <button
+                type="button"
+                onClick={handleLogout}
+                className="w-9/10 flex items-center gap-4 text-white py-4 pl-4 rounded-xl cursor-pointer hover:bg-primary-900 transition-colors bg-transparent border-none text-left"
+            >
                 <LuArrowLeftFromLine />
                 <span>Cerrar sesión</span>
-            </div>
+            </button>
         </aside>
     );
 }
