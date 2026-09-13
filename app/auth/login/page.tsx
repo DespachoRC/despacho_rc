@@ -36,19 +36,25 @@ export default function Login() {
                 return;
             }
 
-            // determina la ruta destino segun el rol del usuario o correo
+            // determina la ruta destino segun el rol o correo del usuario
             const user = data.user;
-            const rol = (user?.user_metadata?.rol || user?.user_metadata?.role || "").toLowerCase();
+            const rol = String(
+                user?.user_metadata?.rol ||
+                user?.user_metadata?.role ||
+                user?.user_metadata?.rol_id ||
+                ""
+            ).toLowerCase();
             const cleanEmail = email.toLowerCase().trim();
 
             let redirectUrl = "/dashboard/metrics";
 
-            if (rol.includes("contador") || cleanEmail === "lriozcristobal@gmail.com") {
+            if (rol.includes("contador") || cleanEmail.includes("lriozcristobal") || cleanEmail.includes("contador")) {
                 redirectUrl = "/contador/dashboard/clients";
-            } else if (rol.includes("cliente") || cleanEmail === "luispm2424@gmail.com") {
+            } else if (rol.includes("cliente") || cleanEmail.includes("luispm2424") || cleanEmail.includes("cliente")) {
                 redirectUrl = "/cliente/dashboard/upload";
-            } else if (rol.includes("superadmin") || rol.includes("owner") || cleanEmail === "juan.garcia@ejemplo.com") {
-                redirectUrl = "/superadmin/dashboard";
+            } else if (cleanEmail.includes("juan.garcia") || cleanEmail.includes("omakod") || rol.includes("admin")) {
+                // nota: la carpeta (superadmin) esta vacia, enviamos a metrics de admin
+                redirectUrl = "/dashboard/metrics";
             } else {
                 redirectUrl = "/dashboard/metrics";
             }
