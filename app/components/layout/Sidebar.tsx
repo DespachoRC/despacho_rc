@@ -25,7 +25,7 @@ export function Sidebar({ rol }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
 
-    // destruye la sesion de forma segura en el servidor y redirige al login
+    // destruye la sesion de forma segura en el servidor y reemplaza la entrada en el historial
     const handleLogout = async () => {
         try {
             await fetch('/api/auth/logout', {
@@ -34,8 +34,8 @@ export function Sidebar({ rol }: SidebarProps) {
         } catch (error) {
             console.error("Error al cerrar sesión:", error);
         } finally {
-            router.push('/auth/login');
-            router.refresh();
+            // reemplaza el historial del navegador para impedir regresar con la flecha atras
+            window.location.replace('/auth/login');
         }
     };
 
