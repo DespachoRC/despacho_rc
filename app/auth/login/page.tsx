@@ -36,7 +36,24 @@ export default function Login() {
                 return;
             }
 
-            router.push('/dashboard');
+            // determina la ruta destino segun el rol del usuario o correo
+            const user = data.user;
+            const rol = (user?.user_metadata?.rol || user?.user_metadata?.role || "").toLowerCase();
+            const cleanEmail = email.toLowerCase().trim();
+
+            let redirectUrl = "/dashboard/metrics";
+
+            if (rol.includes("contador") || cleanEmail === "lriozcristobal@gmail.com") {
+                redirectUrl = "/contador/dashboard/clients";
+            } else if (rol.includes("cliente") || cleanEmail === "luispm2424@gmail.com") {
+                redirectUrl = "/cliente/dashboard/upload";
+            } else if (rol.includes("superadmin") || rol.includes("owner") || cleanEmail === "juan.garcia@ejemplo.com") {
+                redirectUrl = "/superadmin/dashboard";
+            } else {
+                redirectUrl = "/dashboard/metrics";
+            }
+
+            router.push(redirectUrl);
             router.refresh();
         } catch {
             setError('Error de conexión. Intenta de nuevo.');
