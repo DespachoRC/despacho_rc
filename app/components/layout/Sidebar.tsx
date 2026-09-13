@@ -8,7 +8,11 @@ import {
     LuBookOpen, 
     LuClipboardList, 
     LuFolderOpen,
-    LuArrowLeftFromLine
+    LuArrowLeftFromLine,
+    LuUpload,
+    LuReceiptText,
+    LuChartBar,
+    LuBriefcase,
 } from "react-icons/lu";
 import Image from "next/image";
 
@@ -20,8 +24,8 @@ interface SidebarProps {
 export function Sidebar({ rol }: SidebarProps) {
     const pathname = usePathname();
 
-    // lista completa de rutas del sistema; filtrar por rol en la fase de autenticacion real
-    const navItems = [
+    // rutas del panel de administrador
+    const adminNavItems = [
         { name: "Métricas", href: "/dashboard/metrics", icon: LuLayoutPanelLeft },
         { name: "Gestión de usuarios", href: "/dashboard/users-management", icon: LuUsers },
         { name: "Catálogos", href: "/dashboard/catalogs", icon: LuBookOpen },
@@ -29,8 +33,26 @@ export function Sidebar({ rol }: SidebarProps) {
         { name: "Carpetas generales", href: "/dashboard/folders", icon: LuFolderOpen },
     ];
 
+    // rutas del panel de cliente
+    const clienteNavItems = [
+        { name: "Cargar Documentación", href: "/cliente/dashboard/upload", icon: LuUpload },
+        { name: "Mis Presupuestos", href: "/cliente/dashboard/budgets", icon: LuReceiptText },
+        { name: "Mis Resultados", href: "/cliente/dashboard/results", icon: LuChartBar },
+    ];
+
+    // rutas del panel de contador
+    const contadorNavItems = [
+        { name: "Mis Clientes", href: "/contador/dashboard/clients", icon: LuBriefcase },
+    ];
+
+    // selecciona el set de rutas segun el rol recibido
+    const navItems =
+        rol === "cliente"  ? clienteNavItems  :
+        rol === "contador" ? contadorNavItems :
+        adminNavItems;
+
     return (
-        <aside className="row-span-2 flex flex-col justify-evenly items-center bg-primary rounded-2xl">
+        <aside className="row-span-2 flex flex-col justify-between items-center bg-primary rounded-2xl py-8">
             <div className="w-full flex justify-center">
                 <Image
                     src="/logo.png"

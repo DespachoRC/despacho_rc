@@ -1,4 +1,4 @@
-import { authMiddleware, authMiddlewareConfig } from '@/core/middleware/auth.middleware'
+import { authMiddleware } from '@/core/middleware/auth.middleware'
 import { NextRequest } from 'next/server'
 
 export function proxy(request: NextRequest) {

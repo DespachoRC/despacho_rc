@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ActividadesService } from '@/core/services/actividades.service';
 
-// contador sube el archivo final y marca la actividad como completada
+// cliente sube un documento a una actividad
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -10,7 +10,7 @@ export async function POST(
         const { id } = await params;
         const formData = await request.formData();
 
-        const data = await ActividadesService.subirEntregable(id, request, formData);
+        const data = await ActividadesService.subirDocumentoCliente(id, request, formData);
         return NextResponse.json({ success: true, data }, { status: 201 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error interno del servidor';

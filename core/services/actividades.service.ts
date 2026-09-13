@@ -1,103 +1,108 @@
-// importacion de conexion a supabase y tipos del modulo
-import { createClient } from '@/core/db/server';
 import { ActualizarEstatusDTO, SubirEntregableDTO } from '../schemas/actividad.schema';
 import { ActividadesRepository } from '../repositories/actividades.repository';
-
-// mock temporal hasta que el middleware de auth este listo
-const mockContadorId = 'mock-contador-uuid-0000-000000000000';
-const mockClienteId = 'mock-cliente-uuid-0000-000000000000';
+import { getAuthUser } from '../db/get-user';
 
 export class ActividadesService {
 
-    // buscamos el uuid del estatus en el catalogo por su nombre
-    static async get_actividad(id: string): Promise<any> {
-        const data = await ActividadesRepository.get_actividad_data(id);
-        return data
+    static async get_actividad(id: string) {
+        return await ActividadesRepository.get_actividad_data(id);
     }
 
-    private static async getEstatusId(name:string): Promise<any>{
-
-    }
-    // devuelve las notas y archivos que el cliente subio en la cotizacion asociada
     static async getInsumos(actividadId: string) {
-        const supabase = await createClient();
-
-        const { data, error } = await supabase
-            .from('actividades')
-            .select(`
-                cotizaciones(notas_cliente),
-                documentos(id, nombre_archivo, ruta_archivo)
-            `)
-            .eq('id', actividadId)
-            .single();
-
-        if (error) throw new Error(error.message);
-        return data;
+        return await ActividadesRepository.getInsumos(actividadId);
     }
 
-    // contador cambia el estatus de la actividad a en_proceso o bloqueada
     static async actualizarEstatus(actividadId: string, dto: ActualizarEstatusDTO) {
-        const supabase = await createClient();
-        const estatusId = await this.getEstatusId(dto.estatus);
+        return await ActividadesRepository.actualizarEstatus(actividadId, dto.estatus);
+    }
 
-        const { data, error } = await supabase
-            .from('actividades')
-            .update({ estatus_id: estatusId })
-            .eq('id', actividadId)
-            .select()
-            .single();
+    // cliente sube un documento a la actividad
+    static async subirDocumentoCliente(
+        actividadId: string,
+        request: Request,
+        formData: FormData
+    ) {
+        const user = await getAuthUser(request);
 
-        if (error) throw new Error(error.message);
-        return data;
+        // extraemos los campos del form
+        const archivo = formData.get('archivo') as File;
+        const categoriId = formData.get('categoria_documento_id') as string | null;
+
+        if (!archivo) throw new Error('El archivo es requerido');
+
+        // convertimos el archivo a buffer para subirlo a storage
+        const buffer = Buffer.from(await archivo.arrayBuffer());
+        const extension = archivo.name.split('.').pop();
+        const nombreUnico = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+        const rutaStorage = `actividades/${actividadId}/${nombreUnico}`;
+
+        // 1. subimos el archivo a storage
+        const rutaGuardada = await ActividadesRepository.subirArchivoStorage(
+            'documentos',
+            rutaStorage,
+            buffer,
+            archivo.type
+        );
+
+        // 2. obtenemos los datos del usuario para llenar los campos requeridos
+        const actividad = await ActividadesRepository.get_actividad_data(actividadId);
+
+        // 3. insertamos el registro en la tabla documentos
+        return await ActividadesRepository.insertarDocumento({
+            actividad_id: actividadId,
+            organizacion_id: actividad.organizacion_id,
+            cliente_id: user.id,
+            subido_por_id: user.id,
+            nombre_archivo: archivo.name,
+            ruta_archivo: rutaGuardada,
+            categoria_documento_id: categoriId ?? undefined,
+        });
     }
 
     // contador sube el entregable final y cierra la actividad como completada
-    static async subirEntregable(actividadId: string, dto: SubirEntregableDTO) {
-        const supabase = await createClient();
+    static async subirEntregable(
+        actividadId: string,
+        request: Request,
+        formData: FormData
+    ) {
+        const user = await getAuthUser(request);
 
-        // 1. obtenemos el uuid del estatus completada
-        const estatusId = await this.getEstatusId('completada');
+        const archivo = formData.get('archivo') as File;
+        if (!archivo) throw new Error('El archivo es requerido');
 
-        // 2. marcamos la actividad como completada
-        const { error: errorActividad } = await supabase
-            .from('actividades')
-            .update({ estatus_id: estatusId })
-            .eq('id', actividadId);
+        const buffer = Buffer.from(await archivo.arrayBuffer());
+        const extension = archivo.name.split('.').pop();
+        const nombreUnico = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+        const rutaStorage = `actividades/${actividadId}/entregables/${nombreUnico}`;
 
-        if (errorActividad) throw new Error(errorActividad.message);
+        // 1. subimos el archivo a storage
+        const rutaGuardada = await ActividadesRepository.subirArchivoStorage(
+            'documentos',
+            rutaStorage,
+            buffer,
+            archivo.type
+        );
 
-        // 3. insertamos el documento entregable en la tabla documentos
-        const { data, error: errorDoc } = await supabase
-            .from('documentos')
-            .insert({
-                actividad_id: actividadId,
-                cliente_id: mockClienteId,
-                subido_por_id: mockContadorId,
-                nombre_archivo: dto.nombre_archivo,
-                ruta_archivo: dto.url_entregable,
-            })
-            .select()
-            .single();
+        // 2. obtenemos datos de la actividad para llenar cliente_id y organizacion_id
+        const actividad = await ActividadesRepository.get_actividad_data(actividadId);
 
-        if (errorDoc) throw new Error(errorDoc.message);
-        return data;
+        // 3. marcamos la actividad como completada
+        await ActividadesRepository.actualizarEstatus(actividadId, 'completada');
+
+        // 4. insertamos el documento entregable
+        return await ActividadesRepository.insertarDocumento({
+            actividad_id: actividadId,
+            organizacion_id: actividad.organizacion_id,
+            cliente_id: actividad.cliente_id,
+            subido_por_id: user.id,
+            nombre_archivo: archivo.name,
+            ruta_archivo: rutaGuardada,
+        });
     }
 
-    // cliente consulta sus actividades con documentos y nombre de estatus
-    static async getResultados() {
-        const supabase = await createClient();
-
-        const { data, error } = await supabase
-            .from('actividades')
-            .select(`
-                *,
-                documentos(id, nombre_archivo, ruta_archivo),
-                estatus_actividad(nombre)
-            `)
-            .eq('cliente_id', mockClienteId)
-            .order('created_at', { ascending: false });
-
-        if (error) throw new Error(error.message);
-        return data;
+    static async getResultados(request: Request) {
+        const user = await getAuthUser(request);
+        return await ActividadesRepository.getResultados(user.id);
     }
+
 }

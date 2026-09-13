@@ -3,9 +3,9 @@ import { createClient } from '@/core/db/server';
 // tablas permitidas para el crud de catalogos — cualquier otro valor es rechazado
 const TABLAS_PERMITIDAS = [
     'regimenes_fiscales',
-    'especialidades_contadores',
-    'catalogo_servicios',
-    'tipos_archivo',
+    'especialidad_contador',
+    'catalogo_actividades',
+    'categoria_documentos',
 ] as const;
 
 type TablaPermitida = typeof TABLAS_PERMITIDAS[number];
