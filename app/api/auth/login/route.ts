@@ -29,9 +29,19 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // consultamos el nombre del rol del usuario autenticado en la base de datos
+  const { data: usuarioData } = await supabase
+    .from('usuarios')
+    .select('roles(nombre)')
+    .eq('id', data.user.id)
+    .single()
+
+  const roleName = (usuarioData as any)?.roles?.nombre ?? null
+
   return NextResponse.json({
     success: true,
     user: data.user,
+    role: roleName,
     access_token: data.session.access_token,
     refresh_token: data.session.refresh_token
   }, { status: 200 })

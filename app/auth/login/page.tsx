@@ -36,21 +36,19 @@ export default function Login() {
                 return;
             }
 
-            // determina la ruta destino dinamicamente segun el rol del usuario
-            const user = data.user;
-            const rol = String(
-                user?.user_metadata?.rol ||
-                user?.user_metadata?.role ||
-                user?.user_metadata?.rol_nombre ||
-                user?.user_metadata?.rol_id ||
+            // determina la ruta destino segun el nombre del rol devuelto por la API
+            const role = String(
+                data.role ||
+                data.user?.user_metadata?.rol ||
+                data.user?.user_metadata?.role ||
                 ""
             ).toLowerCase();
 
             let redirectUrl = "/dashboard/metrics";
 
-            if (rol.includes("contador")) {
+            if (role.includes("contador")) {
                 redirectUrl = "/contador/dashboard/clients";
-            } else if (rol.includes("cliente")) {
+            } else if (role.includes("cliente")) {
                 redirectUrl = "/cliente/dashboard/upload";
             } else {
                 // administradores, superadmin o cualquier rol administrativo
