@@ -36,3 +36,10 @@ export const CreateAdmin = z.object({
 })
 
 export type CreateAdminType = z.infer<typeof CreateAdmin>
+
+// para asignar un contador a un cliente
+export const AsignarContadorSchema = z.object({
+    contador_id: z.string().uuid("El ID del contador debe ser un identificador válido"),
+});
+
+export type AsignarContadorDTO = z.infer<typeof AsignarContadorSchema>;

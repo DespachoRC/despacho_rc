@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { UsuariosService } from '@/core/services/usuarios.service';
+import { UsersService } from '@/core/services/users.service';
 
-// get: lista los contadores activos disponibles para la vista de asignacion de cartera
-export async function GET() {
+// get: lista los contadores activos de la organizacion
+export async function GET(request: Request) {
     try {
-        const data = await UsuariosService.getContadoresActivos();
+        const data = await UsersService.getContadoresActivos(request);
         return NextResponse.json({ success: true, data }, { status: 200 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error interno del servidor';

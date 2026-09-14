@@ -54,21 +54,18 @@ export class CotizacionesRepository {
         return data;
     }
 
-    // admin fija el precio y cambia estatus a enviada
+    // admin fija el precio — estatus se mantiene en pendiente hasta que el cliente responda
     static async fijarPrecio(cotizacionId: string, dto: FijarPrecioDTO) {
         const supabase = await createClient();
-        const estatusId = await this.getEstatusId('enviada');
 
         const { data, error } = await supabase
             .from('cotizaciones')
-            .update({
-                precio: dto.precio,
-                estatus_id: estatusId,
-            })
+            .update({ precio: dto.precio })
             .eq('id', cotizacionId)
             .select()
             .single();
 
+        if (error?.code === 'PGRST116') throw new Error('Cotización no encontrada');
         if (error) throw new Error(error.message);
         return data;
     }

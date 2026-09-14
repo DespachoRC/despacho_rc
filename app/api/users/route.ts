@@ -1,14 +1,21 @@
 import { NextResponse } from 'next/server';
 import { UsersService } from '@/core/services/users.service';
 import { CreateUserSchema } from '@/core/schemas/users.schema';
-import { createClient } from '@/core/db/server';
 
+// get: admin lista todos los usuarios de su organizacion
+export async function GET(request: Request) {
+    try {
+        const data = await UsersService.getAll(request);
+        return NextResponse.json({ success: true, data }, { status: 200 });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error interno del servidor';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
+    }
+}
 
-// post: admi un nuevo usuario (cliente o contador) en su organizacion
+// post: admin crea un nuevo usuario (cliente o contador) en su organizacion
 export async function POST(request: Request) {
     try {
-
-        
         const body = await request.json();
         const parsed = CreateUserSchema.safeParse(body);
 
@@ -21,7 +28,6 @@ export async function POST(request: Request) {
 
         const data = await UsersService.SingUp(parsed.data, request);
         return NextResponse.json({ success: true, data }, { status: 201 });
-
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error interno del servidor';
         return NextResponse.json({ success: false, error: message }, { status: 500 });
