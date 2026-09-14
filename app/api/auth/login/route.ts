@@ -1,4 +1,5 @@
 import { createClient } from '@/core/db/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -29,32 +30,55 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // consultamos dinamicamente la tabla roles en la base de datos segun el rol_id del usuario
-  const userRolId = data.user?.user_metadata?.rol_id
   let roleName: string | null = null
 
-  if (userRolId) {
-    const { data: roleRow } = await supabase
-      .from('roles')
-      .select('nombre')
-      .eq('id', userRolId)
-      .single()
+  try {
+    // cliente autenticado de supabase pasando el token recien obtenido
+    const authClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${data.session.access_token}`
+          }
+        }
+      }
+    )
 
-    if (roleRow?.nombre) {
-      roleName = roleRow.nombre
-    }
-  }
-
-  // respaldo: si no estaba en metadatos, consulta a la tabla usuarios
-  if (!roleName) {
-    const { data: usuarioData } = await supabase
+    // 1. consultamos la tabla usuarios unida a roles usando el token autenticado
+    const { data: usuarioData, error: userError } = await authClient
       .from('usuarios')
-      .select('roles(nombre)')
+      .select('rol_id, roles(nombre)')
       .eq('id', data.user.id)
       .single()
 
-    roleName = (usuarioData as any)?.roles?.nombre ?? null
+    if (usuarioData?.roles) {
+      roleName = (usuarioData.roles as any).nombre
+    } else if (userError) {
+      console.warn("[LOGIN API] Aviso en consulta usuarios:", userError.message)
+    }
+
+    // 2. si no vino en usuarios pero rol_id esta en metadata, consulta a la tabla roles
+    if (!roleName) {
+      const userRolId = data.user?.user_metadata?.rol_id
+      if (userRolId) {
+        const { data: roleRow } = await authClient
+          .from('roles')
+          .select('nombre')
+          .eq('id', userRolId)
+          .single()
+
+        if (roleRow?.nombre) {
+          roleName = roleRow.nombre
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[LOGIN API] Error consultando rol:", err)
   }
+
+  console.log(`[LOGIN API] Rol obtenido para ${email}:`, roleName)
 
   return NextResponse.json({
     success: true,
