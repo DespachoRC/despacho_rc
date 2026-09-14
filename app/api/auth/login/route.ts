@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
   let roleName: string | null = null
 
   try {
-    // cliente autenticado de supabase pasando el token recien obtenido
-    const authClient = createSupabaseClient(
+    // cliente autenticado con el token del usuario — para consultar sus propios datos (respeta RLS)
+    const userClient = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       {
@@ -46,39 +46,43 @@ export async function POST(request: NextRequest) {
       }
     )
 
-    // 1. consultamos la tabla usuarios unida a roles usando el token autenticado
-    const { data: usuarioData, error: userError } = await authClient
+    // cliente admin con service_role — solo para leer la tabla de referencia 'roles' (server-side)
+    // esta clave nunca sale del servidor, no tiene prefijo NEXT_PUBLIC_
+    const adminClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // paso 1: obtener el rol_id del usuario desde la tabla usuarios (con token de usuario)
+    const { data: usuarioData, error: usuarioError } = await userClient
       .from('usuarios')
-      .select('rol_id, roles(nombre)')
+      .select('rol_id')
       .eq('id', data.user.id)
       .single()
 
-    if (usuarioData?.roles) {
-      roleName = (usuarioData.roles as any).nombre
-    } else if (userError) {
-      console.warn("[LOGIN API] Aviso en consulta usuarios:", userError.message)
-    }
+    console.log('[LOGIN API] usuarioData:', usuarioData, '| error:', usuarioError?.message)
 
-    // 2. si no vino en usuarios pero rol_id esta en metadata, consulta a la tabla roles
-    if (!roleName) {
-      const userRolId = data.user?.user_metadata?.rol_id
-      if (userRolId) {
-        const { data: roleRow } = await authClient
-          .from('roles')
-          .select('nombre')
-          .eq('id', userRolId)
-          .single()
+    const rolId = usuarioData?.rol_id ?? data.user?.user_metadata?.rol_id ?? null
 
-        if (roleRow?.nombre) {
-          roleName = roleRow.nombre
-        }
+    if (rolId) {
+      // paso 2: buscar el nombre del rol en la tabla roles (con cliente admin para evitar RLS)
+      const { data: roleRows, error: roleError } = await adminClient
+        .from('roles')
+        .select('nombre')
+        .eq('id', rolId)
+        .limit(1)
+
+      console.log('[LOGIN API] roleRows:', roleRows, '| error:', roleError?.message)
+
+      if (roleRows && roleRows.length > 0 && roleRows[0]?.nombre) {
+        roleName = roleRows[0].nombre
       }
     }
   } catch (err) {
-    console.error("[LOGIN API] Error consultando rol:", err)
+    console.error('[LOGIN API] Error consultando rol:', err)
   }
 
-  console.log(`[LOGIN API] Rol obtenido para ${email}:`, roleName)
+  console.log(`[LOGIN API] Rol final para ${email}:`, roleName)
 
   return NextResponse.json({
     success: true,
