@@ -29,14 +29,32 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // consultamos el nombre del rol del usuario autenticado en la base de datos
-  const { data: usuarioData } = await supabase
-    .from('usuarios')
-    .select('roles(nombre)')
-    .eq('id', data.user.id)
-    .single()
+  // consultamos dinamicamente la tabla roles en la base de datos segun el rol_id del usuario
+  const userRolId = data.user?.user_metadata?.rol_id
+  let roleName: string | null = null
 
-  const roleName = (usuarioData as any)?.roles?.nombre ?? null
+  if (userRolId) {
+    const { data: roleRow } = await supabase
+      .from('roles')
+      .select('nombre')
+      .eq('id', userRolId)
+      .single()
+
+    if (roleRow?.nombre) {
+      roleName = roleRow.nombre
+    }
+  }
+
+  // respaldo: si no estaba en metadatos, consulta a la tabla usuarios
+  if (!roleName) {
+    const { data: usuarioData } = await supabase
+      .from('usuarios')
+      .select('roles(nombre)')
+      .eq('id', data.user.id)
+      .single()
+
+    roleName = (usuarioData as any)?.roles?.nombre ?? null
+  }
 
   return NextResponse.json({
     success: true,
