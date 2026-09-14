@@ -2,10 +2,27 @@ import { z } from 'zod';
 import { CreateAdminType, CreateUserSchema, CreateAdmin, AsignarContadorDTO } from '@/core/schemas/users.schema';
 import { UserRepository } from '@/core/repositories/usuarios.repository';
 import { getAuthUser } from '../db/get-user';
+import { createClient } from '../db/server';
 
 type CreateUserType = z.infer<typeof CreateUserSchema>
 
 export class UsersService {
+
+    static async login(email: string, password: string) {
+        const supabase = await createClient();
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error || !data.user || !data.session) {
+            throw new Error('Credenciales inválidas. Verifica tu correo y contraseña.');
+        }
+
+        const roleName = await UserRepository.getRoleName(
+            data.user.id,
+            data.user.user_metadata?.rol_id
+        );
+
+        return { ...data, roleName };
+    }
 
     // admin crea un cliente o contador en su organizacion
     static async SingUp(data: CreateUserType, request: Request) {

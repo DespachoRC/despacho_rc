@@ -3,6 +3,33 @@ import { CreateAdminType, CreateUserType } from "@/core/schemas/users.schema"
 
 export class UserRepository {
 
+    public static async getRoleName(userId: string, roleId?: string | null): Promise<string> {
+        const supabase = await createClient();
+        let resolvedRoleId = roleId;
+
+        if (!resolvedRoleId) {
+            const { data, error } = await supabase
+                .from('usuarios')
+                .select('rol_id')
+                .eq('id', userId)
+                .single();
+
+            if (error) throw new Error(`Error al obtener el rol del usuario: ${error.message}`);
+            resolvedRoleId = data?.rol_id;
+        }
+
+        if (!resolvedRoleId) throw new Error('El usuario no tiene un rol asignado');
+
+        const { data, error } = await supabase
+            .from('roles')
+            .select('nombre')
+            .eq('id', resolvedRoleId)
+            .single();
+
+        if (error || !data?.nombre) throw new Error('El rol del usuario no existe');
+        return data.nombre;
+    }
+
     public static async CrearUsuario(userData: CreateUserType, org_id: string) {
         const supabase = await createClient();
         const { data, error } = await supabase.auth.signUp({
