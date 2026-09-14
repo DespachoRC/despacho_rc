@@ -37,12 +37,7 @@ export default function Login() {
             }
 
             // determina la ruta destino segun el nombre del rol devuelto por la API
-            const role = String(
-                data.role ||
-                data.user?.user_metadata?.rol ||
-                data.user?.user_metadata?.role ||
-                ""
-            ).toLowerCase();
+            const role = String(data.role ?? "").toLowerCase();
 
             let redirectUrl = "/dashboard/metrics";
 
@@ -51,7 +46,7 @@ export default function Login() {
             } else if (role.includes("cliente")) {
                 redirectUrl = "/cliente/dashboard/upload";
             } else {
-                // administradores, superadmin o cualquier rol administrativo
+                // admin, owner o cualquier otro rol con acceso al panel
                 redirectUrl = "/dashboard/metrics";
             }
 
