@@ -18,6 +18,7 @@ export default function UploadPage() {
     const [selectedTareas, setSelectedTareas] = useState<string[]>([]);
     const [notas, setNotas] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
     const handleSolicitarActividades = async () => {
         if (selectedTareas.length === 0) return;
@@ -136,6 +137,23 @@ export default function UploadPage() {
         } finally {
             setUploadingCategoria(null);
             event.target.value = ''; // Permite seleccionar el mismo archivo de nuevo si se necesita
+        }
+    };
+
+    const handleDownload = async (docId: string) => {
+        setDownloadingId(docId);
+        try {
+            const res = await fetch(`/api/documentos/${docId}/url-firmada`);
+            const json = await res.json();
+            if (json.success && json.data) {
+                window.open(json.data, "_blank");
+            } else {
+                toast.error(json.error || "No se pudo descargar el archivo");
+            }
+        } catch (error) {
+            toast.error("Error al descargar el archivo");
+        } finally {
+            setDownloadingId(null);
         }
     };
 
@@ -259,6 +277,8 @@ export default function UploadPage() {
                                         <FileAttachment
                                             key={archivo.id}
                                             nombreArchivo={archivo.nombre_archivo}
+                                            onDownload={() => handleDownload(archivo.id)}
+                                            isDownloading={downloadingId === archivo.id}
                                         />
                                     ))}
                                 </div>
