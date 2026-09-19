@@ -105,4 +105,10 @@ export class ActividadesService {
         return await ActividadesRepository.getResultados(user.id);
     }
 
+    // contador obtiene las actividades de sus clientes
+    static async getMisActividades(request: Request) {
+        const user = await getAuthUser(request);
+        return await ActividadesRepository.findByContador(user.id);
+    }
+
 }

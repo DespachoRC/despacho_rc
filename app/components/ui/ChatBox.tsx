@@ -42,16 +42,14 @@ export function ChatBox({ nombreCliente, initialMessages = [] }: ChatBoxProps) {
     };
 
     return (
-        <div className="border border-gray-100 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col h-[350px]">
-            {/* encabezado del chatbox */}
-            <div className="bg-gray-50 border-b border-gray-100 p-4 flex items-center gap-2">
-                <LuMessageSquare className="w-5 h-5 text-primary" />
-                <span className="font-semibold text-gray-800 text-sm">
+        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col h-[350px]">
+            <div className="bg-slate-50 border-b border-slate-200 p-4 flex items-center gap-2">
+                <LuMessageSquare className="w-5 h-5 text-navy-600" />
+                <span className="font-semibold text-navy-950 text-sm">
                     Chat con {nombreCliente}
                 </span>
             </div>
 
-            {/* listado de mensajes del chat */}
             <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4">
                 {messages.map((msg) => {
                     const isDespacho = msg.sender === "despacho";
@@ -63,32 +61,31 @@ export function ChatBox({ nombreCliente, initialMessages = [] }: ChatBoxProps) {
                             }`}
                         >
                             <div
-                                className={`rounded-2xl px-4 py-3 text-sm ${
+                                className={`rounded-2xl px-4 py-3 text-sm shadow-sm ${
                                     isDespacho
-                                        ? "bg-primary text-white rounded-tr-none"
-                                        : "bg-gray text-gray-800 rounded-tl-none"
+                                        ? "bg-navy-700 text-white rounded-tr-none"
+                                        : "bg-slate-100 text-slate-800 rounded-tl-none"
                                 }`}
                             >
                                 <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                             </div>
-                            <span className="text-[10px] text-dark-gray px-1">{msg.time}</span>
+                            <span className="text-[10px] text-slate-400 px-1 font-medium">{msg.time}</span>
                         </div>
                     );
                 })}
             </div>
 
-            {/* formulario para enviar nuevos mensajes */}
-            <form onSubmit={handleSend} className="p-3 border-t border-gray-100 flex gap-2 bg-gray-50/50">
+            <form onSubmit={handleSend} className="p-3 border-t border-slate-200 flex gap-2 bg-slate-50">
                 <input
                     type="text"
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     placeholder="Escribe un mensaje..."
-                    className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-transparent transition-all"
                 />
                 <button
                     type="submit"
-                    className="bg-primary hover:bg-primary-900 text-white p-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center"
+                    className="bg-navy-700 hover:bg-navy-800 text-white p-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center shadow-sm"
                 >
                     <LuSend className="w-4 h-4" />
                 </button>

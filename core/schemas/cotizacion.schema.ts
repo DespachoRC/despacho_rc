@@ -12,7 +12,7 @@ export const CreateCotizacionSchema = z.object({
 export const FijarPrecioSchema = z.object({
     precio: z   
         .number({ error: "El precio debe ser un número válido" })
-        .positive("El precio debe ser mayor a cero"),
+        .nonnegative("El precio debe ser mayor o igual a cero"),
 });
 
 // paso 3: cliente acepta o rechaza la cotizacion enviada

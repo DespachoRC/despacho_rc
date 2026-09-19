@@ -32,6 +32,20 @@ export class CotizacionesRepository {
         return data;
     }
 
+    // obtener cotizaciones de un cliente
+    static async findByCliente(clienteId: string) {
+        const supabase = await createClient();
+
+        const { data, error } = await supabase
+            .from('cotizaciones')
+            .select('*, estatus_cotizacion(nombre)')
+            .eq('cliente_id', clienteId)
+            .order('fecha_creacion', { ascending: false });
+
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
     // crear una cotizacion
     static async create(dto: CreateCotizacionDTO, clienteId: string, organizacionId: string) {
         const supabase = await createClient();
@@ -43,6 +57,7 @@ export class CotizacionesRepository {
                 titulo: dto.titulo,
                 descripcion: dto.descripcion ?? null,
                 actividad_catalogo_id: dto.actividad_catalogo_id,
+                notas_cliente: dto.notas_cliente ?? null,
                 cliente_id: clienteId,
                 organizacion_id: organizacionId,
                 estatus_id: estatusId,
@@ -57,6 +72,24 @@ export class CotizacionesRepository {
     // admin fija el precio — estatus se mantiene en pendiente hasta que el cliente responda
     static async fijarPrecio(cotizacionId: string, dto: FijarPrecioDTO) {
         const supabase = await createClient();
+        
+        // Obtener estado actual
+        const { data: current, error: currentError } = await supabase
+            .from('cotizaciones')
+            .select('estatus_id')
+            .eq('id', cotizacionId)
+            .single();
+
+        if (currentError?.code === 'PGRST116') throw new Error('Cotización no encontrada');
+        if (currentError) throw new Error(currentError.message);
+
+        // Validar que el estatus sea pendiente o rechazada
+        const estatusPendiente = await this.getEstatusId('pendiente');
+        const estatusRechazada = await this.getEstatusId('rechazada');
+
+        if (current.estatus_id !== estatusPendiente && current.estatus_id !== estatusRechazada) {
+            throw new Error('No se puede fijar el precio de una cotización que no esté pendiente o rechazada');
+        }
 
         const { data, error } = await supabase
             .from('cotizaciones')

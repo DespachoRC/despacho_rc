@@ -16,6 +16,14 @@ export class UsersService {
             throw new Error('Credenciales inválidas. Verifica tu correo y contraseña.');
         }
 
+        const isActive = await UserRepository.isUserActive(data.user.id);
+        if (!isActive) {
+            await supabase.auth.signOut();
+            // Lanza un error genérico o específico, en API_STATUS.md menciona que se puede devolver 403, 
+            // el middleware o el route.ts lo pueden capturar.
+            throw new Error('CUENTA_INACTIVA');
+        }
+
         const roleName = await UserRepository.getRoleName(
             data.user.id,
             data.user.user_metadata?.rol_id

@@ -177,4 +177,26 @@ export class UserRepository {
         return data;
     }
 
+    public static async isUserActive(userId: string): Promise<boolean> {
+        const supabase = await createClient();
+        const { data: estatusData, error: estatusError } = await supabase
+            .from('estatus_usuarios')
+            .select('id')
+            .eq('nombre', 'inactivo')
+            .single();
+
+        if (estatusError || !estatusData) return true; // Si falla, asumimos que está activo para no bloquear
+
+        const { data, error } = await supabase
+            .from('usuarios')
+            .select('estatus_id')
+            .eq('id', userId)
+            .single();
+
+        if (error || !data) return false;
+        
+        return data.estatus_id !== estatusData.id;
+    }
+
+
 }
