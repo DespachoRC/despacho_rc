@@ -108,7 +108,7 @@ export class ActividadesRepository {
                 estatus_actividad(nombre)
             `)
             .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false });
+            .order('fecha_creacion', { ascending: false });
 
         if (error) throw new Error(error.message);
         return data;
