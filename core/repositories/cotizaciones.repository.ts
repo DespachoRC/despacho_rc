@@ -43,6 +43,7 @@ export class CotizacionesRepository {
                 titulo: dto.titulo,
                 descripcion: dto.descripcion ?? null,
                 actividad_catalogo_id: dto.actividad_catalogo_id,
+                notas_cliente: dto.notas_cliente ?? null,
                 cliente_id: clienteId,
                 organizacion_id: organizacionId,
                 estatus_id: estatusId,
