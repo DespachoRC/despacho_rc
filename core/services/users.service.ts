@@ -16,6 +16,26 @@ export class UsersService {
             throw new Error('Credenciales inválidas. Verifica tu correo y contraseña.');
         }
 
+        // verificar que el usuario este activo antes de continuar
+        const { data: usuarioData, error: usuarioError } = await supabase
+            .from('usuarios')
+            .select('estatus_usuarios(nombre)')
+            .eq('id', data.user.id)
+            .single();
+
+        if (usuarioError) {
+            await supabase.auth.signOut();
+            throw new Error('No se pudo verificar el estado de la cuenta.');
+        }
+
+        const estatusNombre = (usuarioData?.estatus_usuarios as unknown as { nombre: string } | null)?.nombre;
+
+        if (estatusNombre === 'inactivo') {
+            // revocar la sesion inmediatamente para que no quede activa
+            await supabase.auth.signOut();
+            throw new Error('Tu cuenta está inactiva. Contacta al administrador.');
+        }
+
         const roleName = await UserRepository.getRoleName(
             data.user.id,
             data.user.user_metadata?.rol_id
