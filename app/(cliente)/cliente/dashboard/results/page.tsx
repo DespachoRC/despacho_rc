@@ -73,12 +73,18 @@ export default function ResultsPage() {
             }
         };
 
+        fetchResultados();
+    }, []);
+
+    useEffect(() => {
+        if (conversacionId) return;
+
         const fetchConversaciones = async () => {
             try {
                 const res = await fetch('/api/conversaciones');
                 const result = await res.json();
                 if (result.success && result.data?.length > 0) {
-                    const chat = result.data.find((c: any) => c.tipo_conversacion === 'contador_cliente');
+                    const chat = result.data.find((c: any) => c.tipo === 'contador_cliente');
                     if (chat) setConversacionId(chat.id);
                 }
             } catch (err) {
@@ -86,9 +92,14 @@ export default function ResultsPage() {
             }
         };
 
-        fetchResultados();
         fetchConversaciones();
-    }, []);
+
+        const interval = setInterval(() => {
+            fetchConversaciones();
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [conversacionId]);
 
     const handleDownload = async (docId: string) => {
         setDownloadingId(docId);

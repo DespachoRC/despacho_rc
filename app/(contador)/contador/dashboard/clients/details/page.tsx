@@ -16,12 +16,6 @@ import { FileAttachment } from "@/app/components/ui/FileAttachment";
 import { ChatBox } from "@/app/components/ui/ChatBox";
 import { Button } from "@/app/components/ui/Button";
 
-interface Message {
-    id: string;
-    text: string;
-    sender: "despacho" | "cliente";
-    time: string;
-}
 
 function ClientDetailsContent() {
     const searchParams = useSearchParams();
@@ -34,6 +28,10 @@ function ClientDetailsContent() {
     const [isUploading, setIsUploading] = useState(false);
     const [selectedActividadId, setSelectedActividadId] = useState<string>("");
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+
+    // Chat: conversación con este cliente
+    const [conversacionId, setConversacionId] = useState<string | null>(null);
+    const [conversacionCargando, setConversacionCargando] = useState(false);
 
     // Fetch data
     useEffect(() => {
@@ -91,7 +89,6 @@ function ClientDetailsContent() {
             if (json.success) {
                 alert("Entregable subido exitosamente");
                 setFileToUpload(null);
-                // Opcional: recargar actividades
             } else {
                 alert(`Error: ${json.error}`);
             }
@@ -100,6 +97,62 @@ function ClientDetailsContent() {
             alert("Error al subir archivo");
         } finally {
             setIsUploading(false);
+        }
+    };
+
+    // Buscar conversación existente con el cliente cuando el contador abre la pestaña de chat
+    useEffect(() => {
+        if (activeTab !== 'chat' || !cliente_id || conversacionId) return;
+
+        const fetchConversacion = async () => {
+            try {
+                const res = await fetch('/api/conversaciones');
+                const json = await res.json();
+                if (json.success && json.data?.length > 0) {
+                    const chat = json.data.find(
+                        (c: any) => c.tipo === 'contador_cliente' && c.cliente_id === cliente_id
+                    );
+                    if (chat) setConversacionId(chat.id);
+                }
+            } catch (err) {
+                console.error('Error al buscar conversación:', err);
+            }
+        };
+
+        fetchConversacion();
+
+        const interval = setInterval(() => {
+            fetchConversacion();
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [activeTab, cliente_id, conversacionId]);
+
+    // Crear conversación con el cliente si el contador escribe el primer mensaje
+    const handleStartConversacion = async (primerMensaje: string) => {
+        if (!cliente_id) return;
+        try {
+            const resChat = await fetch('/api/conversaciones', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tipo: 'contador_cliente',
+                    contraparteId: cliente_id,
+                }),
+            });
+            const jsonChat = await resChat.json();
+            if (jsonChat.success) {
+                setConversacionId(jsonChat.data.id);
+                await fetch(`/api/conversaciones/${jsonChat.data.id}/mensajes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contenido: primerMensaje }),
+                });
+            } else {
+                alert(jsonChat.error);
+            }
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -210,10 +263,17 @@ function ClientDetailsContent() {
 
                 {activeTab === "chat" && (
                     <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-200 h-full min-h-[500px]">
-                        <ChatBox
-                            titulo={`Chat con ${clienteInfo ? clienteInfo.nombre : "Cliente"}`}
-                            conversacionId={null}
-                        />
+                        {conversacionCargando ? (
+                            <div className="flex justify-center items-center h-full">
+                                <span className="text-sm text-slate-400">Cargando chat...</span>
+                            </div>
+                        ) : (
+                            <ChatBox
+                                titulo={`Chat con ${clienteInfo ? clienteInfo.nombre : "Cliente"}`}
+                                conversacionId={conversacionId}
+                                onStartConversacion={handleStartConversacion}
+                            />
+                        )}
                     </div>
                 )}
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { LuMessageSquare, LuSend, LuLoader } from "react-icons/lu";
 import { useProfile } from "../layout/ProfileContext";
+import { createClient } from "@/core/db/clients";
 
 interface Mensaje {
     id: string;
@@ -28,10 +29,11 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
     const [inputValue, setInputValue] = useState("");
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
-    
+
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const fetchMensajes = async () => {
+    // Carga inicial y actualización de mensajes
+    const fetchMensajes = useCallback(async () => {
         if (!conversacionId) return;
         try {
             const res = await fetch(`/api/conversaciones/${conversacionId}/mensajes`);
@@ -42,22 +44,50 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
         } catch (error) {
             console.error("Error al obtener mensajes", error);
         }
-    };
-
-    useEffect(() => {
-        if (conversacionId) {
-            setLoading(true);
-            fetchMensajes().finally(() => setLoading(false));
-            
-            // simple polling for new messages every 10s
-            const interval = setInterval(() => fetchMensajes(), 10000);
-            return () => clearInterval(interval);
-        } else {
-            setMensajes([]);
-        }
     }, [conversacionId]);
 
-    // auto scroll to bottom
+    useEffect(() => {
+        if (!conversacionId) {
+            setMensajes([]);
+            return;
+        }
+
+        // 1. Historial inicial
+        setLoading(true);
+        fetchMensajes().finally(() => setLoading(false));
+
+        // 2. Suscripción Supabase Realtime — escucha INSERT en mensajes de esta conversación
+        const supabase = createClient();
+        const channel = supabase
+            .channel(`mensajes:${conversacionId}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "mensajes",
+                    filter: `conversacion_id=eq.${conversacionId}`,
+                },
+                () => {
+                    // Refrescar lista completa con usuarios remitentes al recibir un mensaje nuevo
+                    fetchMensajes();
+                }
+            )
+            .subscribe();
+
+        // 3. Polling de respaldo (cada 3 segundos) para garantizar tiempo real continuo
+        const interval = setInterval(() => {
+            fetchMensajes();
+        }, 3000);
+
+        // 4. Cleanup: remover suscripción e intervalo
+        return () => {
+            supabase.removeChannel(channel);
+            clearInterval(interval);
+        };
+    }, [conversacionId, fetchMensajes]);
+
+    // Auto-scroll al último mensaje
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -70,23 +100,24 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
         if (!texto || sending) return;
 
         setSending(true);
-        
+
         try {
             if (!conversacionId && onStartConversacion) {
-                // si no hay conversacion, delegamos al padre crearla y enviar el mensaje
+                // Sin conversación: el padre la crea y envía el primer mensaje
                 await onStartConversacion(texto);
+                setInputValue("");
             } else if (conversacionId) {
                 const res = await fetch(`/api/conversaciones/${conversacionId}/mensajes`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contenido: texto })
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contenido: texto }),
                 });
                 const json = await res.json();
                 if (json.success) {
-                    setMensajes([...mensajes, json.data]);
+                    setInputValue("");
+                    await fetchMensajes();
                 }
             }
-            setInputValue("");
         } catch (error) {
             console.error("Error enviando mensaje", error);
         } finally {
@@ -96,13 +127,22 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
 
     return (
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col h-[350px]">
+            {/* Header */}
             <div className="bg-slate-50 border-b border-slate-200 p-4 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <LuMessageSquare className="w-5 h-5 text-navy-600" />
                     <span className="font-semibold text-navy-950 text-sm">{titulo}</span>
                 </div>
+                {/* Indicador de conexión en tiempo real */}
+                {conversacionId && (
+                    <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        En vivo
+                    </span>
+                )}
             </div>
 
+            {/* Mensajes */}
             <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto flex flex-col gap-4">
                 {loading ? (
                     <div className="flex-1 flex justify-center items-center">
@@ -110,13 +150,17 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
                     </div>
                 ) : mensajes.length === 0 ? (
                     <div className="flex-1 flex justify-center items-center text-sm text-slate-400 italic">
-                        {conversacionId ? "No hay mensajes aún. Escribe el primero." : "Aún no tienes un chat iniciado."}
+                        {conversacionId
+                            ? "No hay mensajes aún. Escribe el primero."
+                            : "Aún no tienes un chat iniciado."}
                     </div>
                 ) : (
                     mensajes.map((msg) => {
                         const isMe = msg.remitente_id === profile?.id;
                         const timeString = new Date(msg.fecha_envio).toLocaleTimeString("es-MX", {
-                            hour: "2-digit", minute: "2-digit", hour12: false
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
                         });
 
                         return (
@@ -147,7 +191,11 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
                 )}
             </div>
 
-            <form onSubmit={handleSend} className="p-3 border-t border-slate-200 flex gap-2 bg-slate-50 relative">
+            {/* Input */}
+            <form
+                onSubmit={handleSend}
+                className="p-3 border-t border-slate-200 flex gap-2 bg-slate-50"
+            >
                 <input
                     type="text"
                     value={inputValue}
@@ -161,7 +209,11 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
                     disabled={sending || !inputValue.trim()}
                     className="bg-navy-700 hover:bg-navy-800 disabled:bg-navy-400 text-white p-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center shadow-sm"
                 >
-                    {sending ? <LuLoader className="w-4 h-4 animate-spin" /> : <LuSend className="w-4 h-4" />}
+                    {sending ? (
+                        <LuLoader className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <LuSend className="w-4 h-4" />
+                    )}
                 </button>
             </form>
         </div>

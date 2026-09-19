@@ -82,7 +82,7 @@ export class ConversacionesService {
 
         return await ConversacionesRepository.crearConversacion({
             organizacion_id: userOrg,
-            tipo_conversacion: tipo,
+            tipo,
             cliente_id,
             contador_id,
             admin_id

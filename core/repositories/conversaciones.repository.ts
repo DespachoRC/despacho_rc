@@ -12,7 +12,7 @@ export class ConversacionesRepository {
             .from('conversaciones')
             .select(`
                 id, 
-                tipo_conversacion,
+                tipo,
                 fecha_creacion,
                 cliente_id,
                 contador_id,
@@ -52,7 +52,7 @@ export class ConversacionesRepository {
     // Crear una nueva conversación
     public static async crearConversacion(datos: {
         organizacion_id: string;
-        tipo_conversacion: 'contador_cliente' | 'cliente_admin';
+        tipo: 'contador_cliente' | 'cliente_admin';
         cliente_id: string;
         contador_id?: string;
         admin_id?: string;
