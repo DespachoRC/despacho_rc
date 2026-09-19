@@ -51,52 +51,90 @@ export default function UploadPage() {
         }
     };
 
-    useEffect(() => {
-        const loadData = async () => {
-            try {
-                // Fetch tareas
-                const resTareas = await fetch('/api/catalogos/catalogo_actividades?soloActivos=true');
-                const jsonTareas = await resTareas.json();
+    const [uploadingCategoria, setUploadingCategoria] = useState<string | null>(null);
+
+    const loadData = async (quiet = false) => {
+        if (!quiet) setIsLoading(true);
+        try {
+            // Fetch tareas
+            const resTareas = await fetch('/api/catalogos/catalogo_actividades?soloActivos=true');
+            const jsonTareas = await resTareas.json();
+            
+            // Fetch categorias de documentos
+            const resCats = await fetch('/api/catalogos/categoria_documentos?soloActivos=true');
+            const jsonCats = await resCats.json();
+
+            // Fetch archivos subidos
+            const resArchivos = await fetch('/api/carpetas/archivos');
+            const jsonArchivos = await resArchivos.json();
+
+            if (jsonTareas.success) setTiposTarea(jsonTareas.data);
+            
+            if (jsonCats.success && jsonArchivos.success) {
+                const cats = jsonCats.data;
+                const files = jsonArchivos.data;
+
+                const carpetasAgrupadas = cats.map((cat: any) => ({
+                    id: cat.id,
+                    nombre: cat.nombre,
+                    archivos: files.filter((f: any) => f.categoria_documentos?.nombre === cat.nombre)
+                }));
                 
-                // Fetch categorias de documentos
-                const resCats = await fetch('/api/catalogos/categoria_documentos?soloActivos=true');
-                const jsonCats = await resCats.json();
-
-                // Fetch archivos subidos
-                const resArchivos = await fetch('/api/carpetas/archivos');
-                const jsonArchivos = await resArchivos.json();
-
-                if (jsonTareas.success) setTiposTarea(jsonTareas.data);
-                
-                if (jsonCats.success && jsonArchivos.success) {
-                    const cats = jsonCats.data;
-                    const files = jsonArchivos.data;
-
-                    const carpetasAgrupadas = cats.map((cat: any) => ({
-                        id: cat.id,
-                        nombre: cat.nombre,
-                        archivos: files.filter((f: any) => f.categoria_documentos?.nombre === cat.nombre)
-                    }));
-                    
-                    const generalFiles = files.filter((f: any) => !f.categoria_documentos);
-                    if (generalFiles.length > 0 || carpetasAgrupadas.length === 0) {
-                        carpetasAgrupadas.push({
-                            id: 'general',
-                            nombre: 'General',
-                            archivos: generalFiles
-                        });
-                    }
-
-                    setCarpetas(carpetasAgrupadas);
+                const generalFiles = files.filter((f: any) => !f.categoria_documentos);
+                if (generalFiles.length > 0 || carpetasAgrupadas.length === 0) {
+                    carpetasAgrupadas.push({
+                        id: 'general',
+                        nombre: 'General',
+                        archivos: generalFiles
+                    });
                 }
-            } catch (error) {
-                toast.error("Error al cargar datos");
-            } finally {
-                setIsLoading(false);
+
+                setCarpetas(carpetasAgrupadas);
             }
-        };
+        } catch (error) {
+            toast.error("Error al cargar datos");
+        } finally {
+            if (!quiet) setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
         loadData();
     }, []);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, categoriaId: string) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setUploadingCategoria(categoriaId);
+        try {
+            const formData = new FormData();
+            formData.append('archivo', file);
+            
+            // Si la categoría no es 'general', se asocia al ID de categoría correspondiente
+            if (categoriaId !== 'general') {
+                formData.append('tipo_archivo_id', categoriaId);
+            }
+
+            const res = await fetch('/api/carpetas/archivos', {
+                method: 'POST',
+                body: formData
+            });
+
+            const json = await res.json();
+            if (json.success) {
+                toast.success('Archivo subido correctamente');
+                await loadData(true); // Recargar los archivos silenciosamente
+            } else {
+                toast.error(json.error || 'Error al subir el archivo');
+            }
+        } catch (error) {
+            toast.error('Error de conexión al subir el archivo');
+        } finally {
+            setUploadingCategoria(null);
+            event.target.value = ''; // Permite seleccionar el mismo archivo de nuevo si se necesita
+        }
+    };
 
     return (
         <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pr-1">
@@ -204,16 +242,30 @@ export default function UploadPage() {
                                 </div>
                             )}
 
-                            <div className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-6 text-center hover:border-navy-300 hover:bg-slate-50 transition-colors cursor-pointer group relative">
-                                <LuUpload className="w-5 h-5 text-slate-400 group-hover:text-navy-600 transition-colors" />
-                                <p className="text-sm font-medium text-slate-600 group-hover:text-navy-700">
-                                    Añadir archivos a &ldquo;{carpeta.nombre}&rdquo;
-                                </p>
-                                <p className="text-xs text-slate-400">
-                                    PDF, ZIP, XML, imágenes · Máx. 20 MB c/u
-                                </p>
-                                {/* UI mockup only, backend connection needed later */}
-                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" aria-label={`Subir archivo a ${carpeta.nombre}`} />
+                            <div className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-6 text-center hover:border-navy-300 hover:bg-slate-50 transition-colors cursor-pointer group relative overflow-hidden">
+                                {uploadingCategoria === carpeta.id ? (
+                                    <>
+                                        <LuLoader className="w-5 h-5 animate-spin text-navy-600" />
+                                        <p className="text-sm font-medium text-navy-700">Subiendo archivo...</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <LuUpload className="w-5 h-5 text-slate-400 group-hover:text-navy-600 transition-colors" />
+                                        <p className="text-sm font-medium text-slate-600 group-hover:text-navy-700">
+                                            Añadir archivos a &ldquo;{carpeta.nombre}&rdquo;
+                                        </p>
+                                        <p className="text-xs text-slate-400">
+                                            PDF, ZIP, XML, imágenes · Máx. 20 MB c/u
+                                        </p>
+                                        <input 
+                                            type="file" 
+                                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                                            aria-label={`Subir archivo a ${carpeta.nombre}`}
+                                            onChange={(e) => handleFileUpload(e, carpeta.id)}
+                                            disabled={uploadingCategoria !== null}
+                                        />
+                                    </>
+                                )}
                             </div>
                         </div>
                     ))}

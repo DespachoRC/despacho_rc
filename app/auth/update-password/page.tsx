@@ -8,7 +8,7 @@ import * as z from "zod";
 import { Input } from "@/app/components/ui/Input";
 import { Button } from "@/app/components/ui/Button";
 import { LuLock } from "react-icons/lu";
-import { createClient } from "@/core/db/client";
+import { createClient } from "@/core/db/clients";
 
 const schema = z.object({
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
