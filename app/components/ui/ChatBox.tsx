@@ -133,13 +133,6 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
                     <LuMessageSquare className="w-5 h-5 text-navy-600" />
                     <span className="font-semibold text-navy-950 text-sm">{titulo}</span>
                 </div>
-                {/* Indicador de conexión en tiempo real */}
-                {conversacionId && (
-                    <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600">
-                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                        En vivo
-                    </span>
-                )}
             </div>
 
             {/* Mensajes */}
