@@ -45,6 +45,7 @@ export class UserRepository {
                     regimen_fiscal_id: userData.regimen_fiscal_id ?? null,
                     rol_id: userData.rol_id,
                     contador_id: userData.contador_id ?? null,
+                    especialidad_contador: userData.especialidad_contador ?? null,
                 }
             }
         });

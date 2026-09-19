@@ -16,6 +16,7 @@ export const CreateUserSchema = z.object({
     rol_id: z.string().uuid("El ID del rol debe ser un identificador válido"),
     regimen_fiscal_id: z.string().optional(),
     contador_id: z.string().optional(),
+    especialidad_contador: z.string().optional(),
     organizacion_id: z.string().optional()
 });
 

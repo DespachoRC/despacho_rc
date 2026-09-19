@@ -20,6 +20,7 @@ export default function UsersManagement() {
     const [contadores, setContadores] = useState<any[]>([]);
     const [roles, setRoles] = useState<{id: string, nombre: string}[]>([]);
     const [regimenes, setRegimenes] = useState<{id: string, nombre: string}[]>([]);
+    const [especialidades, setEspecialidades] = useState<{id: string, nombre: string}[]>([]);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -29,6 +30,7 @@ export default function UsersManagement() {
         password: "",
         rfc: "",
         regimen_fiscal_id: "",
+        especialidad_contador: "",
     });
 
     const fetchUsers = async () => {
@@ -74,10 +76,23 @@ export default function UsersManagement() {
         }
     };
 
+    const fetchEspecialidades = async () => {
+        try {
+            const res = await fetch("/api/catalogos/especialidad_contador?soloActivos=true");
+            if (res.ok) {
+                const json = await res.json();
+                setEspecialidades(json.data || []);
+            }
+        } catch (error) {
+            console.error("Error fetching especialidades", error);
+        }
+    };
+
     useEffect(() => {
         fetchUsers();
         fetchRoles();
         fetchRegimenes();
+        fetchEspecialidades();
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -101,9 +116,12 @@ export default function UsersManagement() {
             rol_id: roleObj.id,
         };
 
-        // Si es contador, quitamos el regimen si no aplica o lo mandamos
         if (activeTab === "contadores" || !payload.regimen_fiscal_id || payload.regimen_fiscal_id.startsWith('fake')) {
             delete (payload as any).regimen_fiscal_id;
+        }
+
+        if (activeTab === "clientes" || !payload.especialidad_contador) {
+            delete (payload as any).especialidad_contador;
         }
 
         try {
@@ -125,6 +143,7 @@ export default function UsersManagement() {
                     password: "",
                     rfc: "",
                     regimen_fiscal_id: "",
+                    especialidad_contador: "",
                 });
                 fetchUsers(); // recargar
             } else {
@@ -375,6 +394,27 @@ export default function UsersManagement() {
                                         <option value="">Selecciona un régimen...</option>
                                         {regimenes.map(r => (
                                             <option key={r.id} value={r.id}>{r.nombre}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {activeTab === "contadores" && (
+                                <div className="flex flex-col gap-2 w-full">
+                                    <label htmlFor="especialidad_contador" className="text-base font-medium text-slate-700">
+                                        Especialidad
+                                    </label>
+                                    <select
+                                        id="especialidad_contador"
+                                        name="especialidad_contador"
+                                        value={formData.especialidad_contador}
+                                        onChange={handleChange}
+                                        className="w-full bg-navy-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-navy-700 focus:border-navy-700 transition-all text-base cursor-pointer"
+                                        required
+                                    >
+                                        <option value="">Selecciona una especialidad...</option>
+                                        {especialidades.map(e => (
+                                            <option key={e.id} value={e.id}>{e.nombre}</option>
                                         ))}
                                     </select>
                                 </div>
