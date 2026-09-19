@@ -21,7 +21,7 @@ function TableRowSkeleton() {
 
 export default function Metrics() {
     const [isLoading, setIsLoading] = useState(true);
-    const [metrics, setMetrics] = useState({ clientesActivos: 0, contadoresActivos: 0, declaracionesPendientes: 0 });
+    const [metrics, setMetrics] = useState({ clientesActivos: 0, contadoresActivos: 0, tareasPendientes: 0 });
     const [clientes, setClientes] = useState<any[]>([]);
     const [contadores, setContadores] = useState<any[]>([]);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -107,8 +107,8 @@ export default function Metrics() {
                         />
                         <KpiCard 
                             icon={<LuClock className="w-6 h-6" />} 
-                            value={metrics.declaracionesPendientes} 
-                            label="Declaraciones Pendientes (Mes)" 
+                            value={metrics.tareasPendientes} 
+                            label="Tareas Pendientes" 
                         />
                     </>
                 )}
@@ -185,7 +185,7 @@ export default function Metrics() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <Badge 
-                                                    text={cliente.estatus_usuarios?.nombre || "Desconocido"} 
+                                                    text={cliente.estatus_usuarios?.nombre ? cliente.estatus_usuarios.nombre.charAt(0).toUpperCase() + cliente.estatus_usuarios.nombre.slice(1) : "Desconocido"} 
                                                     variant={cliente.estatus_usuarios?.nombre === "activo" ? "success" : "danger"} 
                                                 />
                                             </td>

@@ -211,6 +211,25 @@ export class UserRepository {
         return data;
     }
 
+    // actualizar perfil basico del usuario
+    public static async updatePerfil(userId: string, datos: { nombre?: string, apellido_paterno?: string, apellido_materno?: string }) {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('usuarios')
+            .update({
+                nombre: datos.nombre,
+                apellido_paterno: datos.apellido_paterno,
+                apellido_materno: datos.apellido_materno || null,
+            })
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error?.code === 'PGRST116') throw new Error('Usuario no encontrado');
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
     // reactivar usuario — cambia estatus a activo
     public static async reactivar(userId: string) {
         const supabase = await createClient();

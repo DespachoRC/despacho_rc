@@ -36,15 +36,40 @@ export async function authMiddleware(request: NextRequest) {
 
     const { pathname } = request.nextUrl
 
-    // dev bypass: redireccion desactivada temporalmente para desarrollo de vistas
-    // if (!user && pathname.startsWith('/dashboard')) {
-    //     return NextResponse.redirect(new URL('/auth/login', request.url))
-    // }
+    // Si no hay usuario y trata de entrar a rutas protegidas
+    if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/cliente') || pathname.startsWith('/contador'))) {
+        return NextResponse.redirect(new URL('/auth/login', request.url))
+    }
 
-    // dev bypass: redireccion desactivada temporalmente para desarrollo de vistas
-    // if (user && pathname.startsWith('/auth')) {
-    //     return NextResponse.redirect(new URL('/dashboard', request.url))
-    // }
+    // Si hay usuario obtenemos su rol
+    if (user) {
+        const { data: userData } = await supabase.from('usuarios').select('roles(nombre)').eq('id', user.id).single();
+        // @ts-ignore
+        const role = userData?.roles?.nombre;
+
+        // Si intenta entrar al login o a la raiz, lo mandamos a su dashboard correspondiente
+        if (pathname.startsWith('/auth/login') || pathname === '/') {
+            if (role === 'admin') return NextResponse.redirect(new URL('/dashboard/metrics', request.url));
+            if (role === 'contador') return NextResponse.redirect(new URL('/contador/dashboard/clients', request.url));
+            if (role === 'cliente') return NextResponse.redirect(new URL('/cliente/dashboard/upload', request.url));
+            return NextResponse.redirect(new URL('/unauthorized', request.url));
+        }
+
+        // Restricción de rutas por rol
+        const isDashboardAdmin = pathname.startsWith('/dashboard');
+        const isClienteView = pathname.startsWith('/cliente');
+        const isContadorView = pathname.startsWith('/contador');
+
+        if (isDashboardAdmin && role !== 'admin') {
+            return NextResponse.redirect(new URL('/unauthorized', request.url));
+        }
+        if (isClienteView && role !== 'cliente') {
+            return NextResponse.redirect(new URL('/unauthorized', request.url));
+        }
+        if (isContadorView && role !== 'contador') {
+            return NextResponse.redirect(new URL('/unauthorized', request.url));
+        }
+    }
 
     return response
 }

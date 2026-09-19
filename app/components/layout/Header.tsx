@@ -293,7 +293,14 @@ export function Header() {
 
                             {/* Acciones */}
                             <div className="py-1">
-                                <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-left cursor-pointer">
+                                <button 
+                                    onClick={() => {
+                                        setProfileOpen(false);
+                                        const basePath = profile.rol === 'admin' || profile.rol === 'owner' ? '/dashboard' : `/${profile.rol}/dashboard`;
+                                        router.push(`${basePath}/settings`);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-left cursor-pointer"
+                                >
                                     <LuSettings className="w-4 h-4 shrink-0 text-slate-400" />
                                     Configuración
                                 </button>

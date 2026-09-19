@@ -40,12 +40,12 @@ export async function GET(request: Request) {
             .eq('rol_id', contadorRoleId)
             .eq('estatus_id', estatusActivoId);
 
-        // 5. Contar actividades pendientes
-        const { data: estatusAct } = await supabase.from('estatus_actividad').select('id, nombre').eq('nombre', 'Pendiente').single();
-        const pendienteId = estatusAct?.id;
+        // 5. Contar tareas pendientes (esperando respuesta de admin/contador)
+        const { data: estatusCot } = await supabase.from('estatus_cotizacion').select('id, nombre').eq('nombre', 'pendiente').single();
+        const pendienteId = estatusCot?.id;
 
-        const { count: actividadesCount } = await supabase
-            .from('actividades')
+        const { count: tareasCount } = await supabase
+            .from('cotizaciones')
             .select('*', { count: 'exact', head: true })
             .eq('organizacion_id', org_id)
             .eq('estatus_id', pendienteId);
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
             data: {
                 clientesActivos: clientesCount || 0,
                 contadoresActivos: contadoresCount || 0,
-                declaracionesPendientes: actividadesCount || 0
+                tareasPendientes: tareasCount || 0
             }
         });
     } catch (error) {

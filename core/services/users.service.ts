@@ -109,6 +109,15 @@ export class UsersService {
         return await UserRepository.getPerfil(user.id);
     }
 
+    // actualizar el perfil basico del usuario autenticado
+    static async updatePerfil(request: Request, body: { nombre?: string, apellido_paterno?: string, apellido_materno?: string }) {
+        const user = await getAuthUser(request);
+        if (!body.nombre || !body.apellido_paterno) {
+            throw new Error('El nombre y el apellido paterno son obligatorios.');
+        }
+        return await UserRepository.updatePerfil(user.id, body);
+    }
+
     // Reactivación (cambiar estatus a Activo)
     static async reactivar(userId: string) {
         if (!userId) throw new Error('El ID de usuario es requerido');

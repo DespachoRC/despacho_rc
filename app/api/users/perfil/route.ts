@@ -21,3 +21,15 @@ export async function GET(request: Request) {
         return NextResponse.json({ success: false, error: message }, { status });
     }
 }
+
+// put: actualiza informacion basica del perfil (nombre, apellidos)
+export async function PUT(request: Request) {
+    try {
+        const body = await request.json();
+        const data = await UsersService.updatePerfil(request, body);
+        return NextResponse.json({ success: true, data }, { status: 200 });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error interno del servidor';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
+    }
+}
