@@ -112,7 +112,7 @@ export class ActividadesRepository {
             .order('fecha_creacion', { ascending: false });
 
         if (error) throw new Error(error.message);
-        return data;
+        return data.map((act: any) => ({ ...act, created_at: act.fecha_creacion }));
     }
 
     // contador consulta sus actividades asignadas

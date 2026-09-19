@@ -3,7 +3,7 @@ import { CarpetasService } from '@/core/services/carpetas.service';
 
 export async function GET(request: Request) {
     try {
-        const data = await CarpetasService.getCarpetasAdmin(request);
+        const data = await CarpetasService.getArchivosGenerales(request);
         return NextResponse.json({ success: true, data }, { status: 200 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error interno del servidor';

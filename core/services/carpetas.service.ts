@@ -29,7 +29,7 @@ export class CarpetasService {
         return data;
     }
     // admin consulta las carpetas de todos los clientes agrupados por contador
-    static async getCarpetasAdmin(request: Request) {
+    static async getArchivosGenerales(request: Request) {
         const user = await getAuthUser(request);
         const { UserRepository } = await import('@/core/repositories/usuarios.repository');
         const role = await UserRepository.getRoleName(user.id);
@@ -68,13 +68,13 @@ export class CarpetasService {
                 id,
                 nombre_archivo,
                 ruta_archivo,
-                created_at,
+                fecha_subida,
                 categoria_documento_id,
                 categoria_documentos ( id, nombre )
             `)
             .eq('cliente_id', targetClienteId)
             .is('actividad_id', null)
-            .order('created_at', { ascending: false });
+            .order('fecha_subida', { ascending: false });
 
         if (error) throw new Error(error.message);
         return data;

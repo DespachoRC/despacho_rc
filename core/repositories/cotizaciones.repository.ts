@@ -37,13 +37,16 @@ export class CotizacionesRepository {
         const supabase = await createClient();
         const estatusId = await this.getEstatusId('pendiente');
 
+        const descripcionFinal = dto.notas_cliente 
+            ? `${dto.descripcion || ''}\n\nNota del cliente: ${dto.notas_cliente}`.trim()
+            : (dto.descripcion ?? null);
+
         const { data, error } = await supabase
             .from('cotizaciones')
             .insert({
                 titulo: dto.titulo,
-                descripcion: dto.descripcion ?? null,
+                descripcion: descripcionFinal,
                 actividad_catalogo_id: dto.actividad_catalogo_id,
-                notas_cliente: dto.notas_cliente ?? null,
                 cliente_id: clienteId,
                 organizacion_id: organizacionId,
                 estatus_id: estatusId,

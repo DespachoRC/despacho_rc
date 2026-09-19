@@ -174,7 +174,7 @@ function ClientDetailsContent() {
                                             </div>
                                             <div className="flex items-baseline gap-2">
                                                 <h3 className="text-lg font-bold text-navy-950">
-                                                    {act.cotizaciones?.titulo || 'Actividad'}
+                                                    {act.titulo || 'Actividad'}
                                                 </h3>
                                                 <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-medium">
                                                     {act.estatus_actividad?.nombre || 'Pendiente'}
@@ -186,10 +186,10 @@ function ClientDetailsContent() {
                                         </span>
                                     </div>
                                     
-                                    {act.cotizaciones?.descripcion && (
+                                    {act.descripcion && (
                                         <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100">
                                             <p className="text-sm text-slate-600 italic">
-                                                &quot;{act.cotizaciones.descripcion}&quot;
+                                                &quot;{act.descripcion}&quot;
                                             </p>
                                         </div>
                                     )}
@@ -237,7 +237,7 @@ function ClientDetailsContent() {
                                 {actividades.length === 0 && <option value="">Sin actividades disponibles</option>}
                                 {actividades.map(act => (
                                     <option key={act.id} value={act.id}>
-                                        {act.cotizaciones?.titulo || 'Actividad'} - {new Date(act.created_at).toLocaleDateString()}
+                                        {act.titulo || 'Actividad'} - {new Date(act.created_at).toLocaleDateString()}
                                     </option>
                                 ))}
                             </select>
