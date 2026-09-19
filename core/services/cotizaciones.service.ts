@@ -12,12 +12,6 @@ export class CotizacionesService {
         return await CotizacionesRepository.findPendientes(organizacionId);
     }
 
-    // cliente obtiene sus cotizaciones
-    static async getMisCotizaciones(request: Request) {
-        const user = await getAuthUser(request);
-        return await CotizacionesRepository.findByCliente(user.id);
-    }
-
     // cliente crea una nueva cotizacion
     static async createCotizacion(dto: CreateCotizacionDTO, request: Request) {
         const user = await getAuthUser(request);

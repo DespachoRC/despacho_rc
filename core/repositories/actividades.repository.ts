@@ -131,31 +131,5 @@ export class ActividadesRepository {
         return data;
     }
 
-    // obtener actividades asignadas a los clientes de un contador
-    public static async findByContador(contadorId: string) {
-        const supabase = await createClient();
-        
-        const { data: clientes } = await supabase
-            .from('usuarios')
-            .select('id')
-            .eq('contador_id', contadorId);
-            
-        const clienteIds = clientes?.map(c => c.id) || [];
-        
-        if (clienteIds.length === 0) return [];
-
-        const { data, error } = await supabase
-            .from('actividades')
-            .select(`
-                *,
-                usuarios!cliente_id(nombre, apellido_paterno),
-                estatus_actividad(nombre)
-            `)
-            .in('cliente_id', clienteIds)
-            .order('created_at', { ascending: false });
-
-        if (error) throw new Error(error.message);
-        return data;
-    }
 
 }

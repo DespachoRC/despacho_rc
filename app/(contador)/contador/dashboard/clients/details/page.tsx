@@ -176,8 +176,8 @@ export default function ClientDetailsPage() {
                 {activeTab === "chat" && (
                     <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-200 h-full min-h-[500px]">
                         <ChatBox
-                            nombreCliente="Grupo Monterrey SA de CV"
-                            initialMessages={initialMessages}
+                            titulo="Chat con Grupo Monterrey SA de CV"
+                            conversacionId={null}
                         />
                     </div>
                 )}

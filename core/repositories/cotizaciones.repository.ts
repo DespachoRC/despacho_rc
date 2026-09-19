@@ -32,20 +32,6 @@ export class CotizacionesRepository {
         return data;
     }
 
-    // obtener cotizaciones de un cliente
-    static async findByCliente(clienteId: string) {
-        const supabase = await createClient();
-
-        const { data, error } = await supabase
-            .from('cotizaciones')
-            .select('*, estatus_cotizacion(nombre)')
-            .eq('cliente_id', clienteId)
-            .order('fecha_creacion', { ascending: false });
-
-        if (error) throw new Error(error.message);
-        return data;
-    }
-
     // crear una cotizacion
     static async create(dto: CreateCotizacionDTO, clienteId: string, organizacionId: string) {
         const supabase = await createClient();

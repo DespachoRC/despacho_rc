@@ -14,12 +14,17 @@ export const metadata: Metadata = {
   description: "DespachoRC",
 };
 
+import { Toaster } from "react-hot-toast";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return(
     <html
       lang="es" className={cn("font-sans", geist.variable)}
     >
-      <body className={montserrat.className}>{children}</body>
+      <body className={montserrat.className}>
+        {children}
+        <Toaster position="bottom-right" />
+      </body>
     </html>
   );
 }

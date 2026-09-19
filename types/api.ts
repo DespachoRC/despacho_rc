@@ -15,6 +15,7 @@ export interface UserProfile {
   rfc: string;
   rol: UserRole;
   organizacion_nombre: string;
+  contador_id?: string;
   fecha_creacion: string; // ISO 8601
 }
 

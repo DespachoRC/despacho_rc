@@ -5,18 +5,14 @@ import { UsersService } from '@/core/services/users.service';
 export async function GET(request: Request) {
     try {
         const rawData = await UsersService.getPerfil(request);
+        const { roles, organizaciones, estatus_usuarios, regimenes_fiscales, ...rest } = rawData as any;
         
         // Mapear los joins de Supabase al interface UserProfile del frontend
         const data = {
-            ...rawData,
-            rol: (rawData.roles as any)?.nombre,
-            organizacion_nombre: (rawData.organizaciones as any)?.nombre || '',
+            ...rest,
+            rol: (roles as any)?.nombre || (Array.isArray(roles) ? roles[0]?.nombre : undefined),
+            organizacion_nombre: (organizaciones as any)?.nombre || '',
         };
-        // Limpiamos los objetos crudos anidados para que la respuesta sea plana
-        delete data.roles;
-        delete data.organizaciones;
-        delete data.estatus_usuarios;
-        delete data.regimenes_fiscales;
 
         return NextResponse.json({ success: true, data }, { status: 200 });
     } catch (error) {
