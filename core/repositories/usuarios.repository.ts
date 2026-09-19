@@ -174,6 +174,18 @@ export class UserRepository {
 
         if (error?.code === 'PGRST116') throw new Error('Cliente no encontrado');
         if (error) throw new Error(error.message);
+
+        // Notificar al contador asignado
+        const { NotificacionesRepository } = await import('./notificaciones.repository');
+        const clienteNombre = `${data.nombre || 'Cliente'} ${data.apellido_paterno || ''}`.trim();
+        NotificacionesRepository.crearNotificacion({
+            usuario_id: contadorId,
+            titulo: 'Nuevo Cliente Asignado',
+            mensaje: `Se ha asignado la cartera del cliente ${clienteNombre} a tu cuenta.`,
+            tipo: 'asignacion',
+            url_destino: `/contador/dashboard/clients/details?cliente_id=${clienteId}`,
+        }).catch(console.error);
+
         return data;
     }
 
@@ -184,7 +196,7 @@ export class UserRepository {
             .from('usuarios')
             .select(`
                 id, nombre, apellido_paterno, apellido_materno,
-                email, rfc, especialidad_contador, fecha_creacion,
+                email, rfc, contador_id, especialidad_contador, fecha_creacion,
                 roles(nombre),
                 estatus_usuarios(nombre),
                 organizaciones(nombre),

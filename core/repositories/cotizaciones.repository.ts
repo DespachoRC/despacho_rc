@@ -55,6 +55,16 @@ export class CotizacionesRepository {
             .single();
 
         if (error) throw new Error(error.message);
+
+        // Notificar a los administradores
+        const { NotificacionesRepository } = await import('./notificaciones.repository');
+        NotificacionesRepository.crearNotificacionParaAdmins({
+            titulo: 'Nueva Cotización Solicitada',
+            mensaje: `Un cliente solicitó la cotización "${dto.titulo}".`,
+            tipo: 'cotizacion',
+            url_destino: '/admin/dashboard/quotations',
+        }).catch(console.error);
+
         return data;
     }
 
@@ -84,7 +94,7 @@ export class CotizacionesRepository {
         // obtener cotizacion y su estatus actual
         const { data: cotizacion, error: fetchError } = await supabase
             .from('cotizaciones')
-            .select('id, estatus_id, estatus_cotizacion(nombre)')
+            .select('id, titulo, cliente_id, estatus_id, estatus_cotizacion(nombre)')
             .eq('id', cotizacionId)
             .single();
 
@@ -115,6 +125,19 @@ export class CotizacionesRepository {
             .single();
 
         if (error) throw new Error(error.message);
+
+        // Notificar al cliente que su presupuesto está listo
+        if (cotizacion?.cliente_id) {
+            const { NotificacionesRepository } = await import('./notificaciones.repository');
+            NotificacionesRepository.crearNotificacion({
+                usuario_id: cotizacion.cliente_id,
+                titulo: 'Presupuesto Listo',
+                mensaje: `Se asignó precio a tu cotización "${cotizacion.titulo || 'Solicitud'}".`,
+                tipo: 'cotizacion',
+                url_destino: '/cliente/dashboard/results',
+            }).catch(console.error);
+        }
+
         return data;
     }
 

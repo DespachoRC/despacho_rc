@@ -23,22 +23,42 @@ export class ConversacionesService {
         const user = await getAuthUser(request);
 
         // Validamos que la conversacion exista y que el usuario sea participante
-        // (RLS lo validaría en la DB, pero lo hacemos explícito aquí también por seguridad adicional)
         const conversacion = await ConversacionesRepository.getConversacion(conversacionId);
         
-        if (conversacion.cliente_id !== user.id && 
-            conversacion.contador_id !== user.id && 
-            conversacion.admin_id !== user.id) {
-            
-            // Si el usuario es un admin de la misma organizacion pero no el asignado directo?
-            // Para simplificar, asumimos que el RLS lo bloquearía de todas formas si no es participante.
-        }
-
-        return await ConversacionesRepository.enviarMensaje({
+        const mensajeCreado = await ConversacionesRepository.enviarMensaje({
             conversacion_id: conversacionId,
             remitente_id: user.id,
             contenido
         });
+
+        // Determinar el destinatario del mensaje
+        let destinatarioId: string | null = null;
+        let urlDestino = '/cliente/dashboard/results';
+
+        if (conversacion.cliente_id === user.id) {
+            destinatarioId = conversacion.contador_id || conversacion.admin_id;
+            urlDestino = `/contador/dashboard/clients/details?cliente_id=${user.id}`;
+        } else {
+            destinatarioId = conversacion.cliente_id;
+            urlDestino = '/cliente/dashboard/results';
+        }
+
+        if (destinatarioId) {
+            const { NotificacionesRepository } = await import('../repositories/notificaciones.repository');
+            const { UserRepository } = await import('../repositories/usuarios.repository');
+            const perfilRemitente = await UserRepository.getPerfil(user.id);
+            const nombreRemitente = `${perfilRemitente.nombre || 'Usuario'} ${perfilRemitente.apellido_paterno || ''}`.trim();
+
+            NotificacionesRepository.crearNotificacion({
+                usuario_id: destinatarioId,
+                titulo: `Mensaje de ${nombreRemitente}`,
+                mensaje: contenido.length > 50 ? `${contenido.substring(0, 50)}...` : contenido,
+                tipo: 'mensaje',
+                url_destino: urlDestino,
+            }).catch(console.error);
+        }
+
+        return mensajeCreado;
     }
 
     // Crear conversacion nueva

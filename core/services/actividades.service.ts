@@ -48,7 +48,7 @@ export class ActividadesService {
         const actividad = await ActividadesRepository.get_actividad_data(actividadId);
 
         // 3. insertamos el registro en la tabla documentos
-        return await ActividadesRepository.insertarDocumento({
+        const docRes = await ActividadesRepository.insertarDocumento({
             actividad_id: actividadId,
             organizacion_id: actividad.organizacion_id,
             cliente_id: user.id,
@@ -57,6 +57,22 @@ export class ActividadesService {
             ruta_archivo: rutaGuardada,
             categoria_documento_id: categoriId ?? undefined,
         });
+
+        // Notificar al contador asignado
+        const { UserRepository } = await import('@/core/repositories/usuarios.repository');
+        const perfilCliente = await UserRepository.getPerfil(user.id);
+        if (perfilCliente?.contador_id) {
+            const { NotificacionesRepository } = await import('../repositories/notificaciones.repository');
+            NotificacionesRepository.crearNotificacion({
+                usuario_id: perfilCliente.contador_id,
+                titulo: 'Nuevo Insumo de Cliente',
+                mensaje: `El cliente ${perfilCliente.nombre || ''} subió "${archivo.name}" en una actividad.`,
+                tipo: 'archivo',
+                url_destino: `/contador/dashboard/clients/details?cliente_id=${user.id}`,
+            }).catch(console.error);
+        }
+
+        return docRes;
     }
 
     // contador sube el entregable final y cierra la actividad como completada
@@ -68,7 +84,7 @@ export class ActividadesService {
         const user = await getAuthUser(request);
 
         const archivo = formData.get('archivo') as File;
-        if (!archivo) throw new Error('El archivo es requerido');
+        if (!archivo) throw new Error('El archivo me es requerido');
 
         const buffer = Buffer.from(await archivo.arrayBuffer());
         const extension = archivo.name.split('.').pop();
@@ -90,7 +106,7 @@ export class ActividadesService {
         await ActividadesRepository.actualizarEstatus(actividadId, 'completada');
 
         // 4. insertamos el documento entregable
-        return await ActividadesRepository.insertarDocumento({
+        const entregableDoc = await ActividadesRepository.insertarDocumento({
             actividad_id: actividadId,
             organizacion_id: actividad.organizacion_id,
             cliente_id: actividad.cliente_id,
@@ -98,6 +114,20 @@ export class ActividadesService {
             nombre_archivo: archivo.name,
             ruta_archivo: rutaGuardada,
         });
+
+        // 5. Notificar al cliente que su actividad fue completada y tiene un nuevo entregable
+        if (actividad.cliente_id) {
+            const { NotificacionesRepository } = await import('../repositories/notificaciones.repository');
+            NotificacionesRepository.crearNotificacion({
+                usuario_id: actividad.cliente_id,
+                titulo: 'Entregable Final Disponible',
+                mensaje: `Se completó la actividad y se subió el entregable "${archivo.name}".`,
+                tipo: 'actividad',
+                url_destino: '/cliente/dashboard/results',
+            }).catch(console.error);
+        }
+
+        return entregableDoc;
     }
 
     static async getResultados(request: Request) {

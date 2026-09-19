@@ -1,8 +1,20 @@
 'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { LuBell, LuUser, LuLogOut, LuSettings, LuChevronDown, LuX } from "react-icons/lu";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { LuBell, LuUser, LuLogOut, LuSettings, LuChevronDown, LuX, LuMessageSquare, LuFileText, LuCheck, LuFolder, LuUserCheck } from "react-icons/lu";
 import { useProfile } from "./ProfileContext";
+import { createClient } from "@/core/db/clients";
+
+interface Notificacion {
+    id: string;
+    titulo: string;
+    mensaje: string;
+    tipo: string;
+    url_destino: string | null;
+    leida: boolean;
+    created_at: string;
+}
 
 const rolLabels: Record<string, string> = {
     owner:    "Propietario",
@@ -18,10 +30,17 @@ const rolColors: Record<string, string> = {
     cliente:  "bg-slate-600 text-white",
 };
 
-// notificaciones estáticas removidas para usar skeleton
+const tipoIcons: Record<string, any> = {
+    cotizacion: LuFileText,
+    mensaje:    LuMessageSquare,
+    actividad:  LuCheck,
+    archivo:    LuFolder,
+    asignacion: LuUserCheck,
+};
 
 export function Header() {
     const { profile, isLoading } = useProfile();
+    const router = useRouter();
 
     const [profileOpen, setProfileOpen] = useState(false);
     const [notiOpen,    setNotiOpen]    = useState(false);
@@ -29,10 +48,60 @@ export function Header() {
     const profileRef = useRef<HTMLDivElement>(null);
     const notiRef    = useRef<HTMLDivElement>(null);
 
-    const [isLoadingNotis] = useState(true);
-    const noLeidas = 0;
+    const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
+    const [isLoadingNotis, setIsLoadingNotis] = useState(true);
+    const [activeToast, setActiveToast] = useState<Notificacion | null>(null);
 
-    // cierra el dropdown al click fuera
+    const fetchNotificaciones = useCallback(async () => {
+        try {
+            const res = await fetch('/api/notificaciones');
+            const json = await res.json();
+            if (json.success) {
+                setNotificaciones(json.data ?? []);
+            }
+        } catch (error) {
+            console.error("Error cargando notificaciones:", error);
+        } finally {
+            setIsLoadingNotis(false);
+        }
+    }, []);
+
+    // Suscripción Realtime a notificaciones del usuario
+    useEffect(() => {
+        if (!profile?.id) return;
+
+        fetchNotificaciones();
+
+        const supabase = createClient();
+        const channel = supabase
+            .channel(`notificaciones:${profile.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "notificaciones",
+                    filter: `usuario_id=eq.${profile.id}`,
+                },
+                (payload) => {
+                    const nueva = payload.new as Notificacion;
+                    setNotificaciones((prev) => [nueva, ...prev.filter(n => n.id !== nueva.id)]);
+                    
+                    // Mostrar Toast flotante
+                    setActiveToast(nueva);
+                    setTimeout(() => {
+                        setActiveToast((curr) => (curr?.id === nueva.id ? null : curr));
+                    }, 5000);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [profile?.id, fetchNotificaciones]);
+
+    // Cierra el dropdown al click fuera
     useEffect(() => {
         function handleClick(e: MouseEvent) {
             if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
@@ -46,134 +115,228 @@ export function Header() {
         return () => document.removeEventListener("mousedown", handleClick);
     }, []);
 
+    const noLeidas = notificaciones.filter((n) => !n.leida).length;
+
+    const handleNotiClick = async (noti: Notificacion) => {
+        if (!noti.leida) {
+            setNotificaciones((prev) =>
+                prev.map((n) => (n.id === noti.id ? { ...n, leida: true } : n))
+            );
+            await fetch(`/api/notificaciones/${noti.id}/leida`, { method: 'PATCH' }).catch(console.error);
+        }
+        setNotiOpen(false);
+        if (noti.url_destino) {
+            router.push(noti.url_destino);
+        }
+    };
+
+    const handleMarcarTodasLeidas = async () => {
+        setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })));
+        await fetch('/api/notificaciones/marcar-todas', { method: 'POST' }).catch(console.error);
+    };
+
     return (
-        <header className="flex justify-end items-center gap-2 bg-white pr-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <>
+            <header className="flex justify-end items-center gap-2 bg-white pr-4 rounded-2xl border border-slate-200/80 shadow-sm">
 
-            {/* ── NOTIFICACIONES ─────────────────────────────── */}
-            <div ref={notiRef} className="relative">
-                <button
-                    onClick={() => { setNotiOpen(!notiOpen); setProfileOpen(false); }}
-                    className="relative flex items-center justify-center w-10 h-10 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-                    aria-label="Notificaciones"
-                >
-                    <LuBell className="w-[18px] h-[18px]" />
-                    {noLeidas > 0 && (
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 border-2 border-white" />
-                    )}
-                </button>
+                {/* ── NOTIFICACIONES ─────────────────────────────── */}
+                <div ref={notiRef} className="relative">
+                    <button
+                        onClick={() => { setNotiOpen(!notiOpen); setProfileOpen(false); }}
+                        className="relative flex items-center justify-center w-10 h-10 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                        aria-label="Notificaciones"
+                    >
+                        <LuBell className="w-[18px] h-[18px]" />
+                        {noLeidas > 0 && (
+                            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white animate-pulse" />
+                        )}
+                    </button>
 
-                {notiOpen && (
-                    <div className="absolute top-[calc(100%+8px)] right-0 w-80 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                            <h3 className="text-sm font-semibold text-slate-900">Notificaciones</h3>
-                            {noLeidas > 0 && (
-                                <span className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full font-medium">
-                                    {noLeidas} nuevas
-                                </span>
-                            )}
-                        </div>
-                        <ul className="max-h-72 overflow-y-auto">
-                            {isLoadingNotis ? (
-                                Array.from({ length: 4 }).map((_, i) => (
-                                    <li key={i} className="flex items-start gap-3 px-4 py-3 border-b border-slate-50 animate-pulse">
-                                        <span className="mt-1 w-2 h-2 rounded-full shrink-0 bg-slate-200" />
-                                        <div className="flex-1 flex flex-col gap-2">
-                                            <div className="h-3 w-3/4 bg-slate-200 rounded"></div>
-                                            <div className="h-2 w-1/3 bg-slate-200 rounded"></div>
-                                        </div>
-                                    </li>
-                                ))
-                            ) : (
-                                <li className="px-4 py-6 text-center text-sm text-slate-500">
-                                    No tienes notificaciones
-                                </li>
-                            )}
-                        </ul>
-                        <div className="px-4 py-2.5 border-t border-slate-100">
-                            <button className="text-xs text-navy-600 hover:text-navy-800 font-medium transition-colors cursor-pointer">
-                                Marcar todas como leídas
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* ── PERFIL ─────────────────────────────────────── */}
-            <div ref={profileRef} className="relative">
-                <button
-                    onClick={() => { setProfileOpen(!profileOpen); setNotiOpen(false); }}
-                    className="flex items-center gap-3 h-10 pl-2 pr-3 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                    {isLoading ? (
-                        <div className="flex gap-2 items-center animate-pulse">
-                            <div className="h-3.5 w-24 bg-slate-200 rounded" />
-                            <div className="w-7 h-7 bg-slate-200 rounded-full" />
-                        </div>
-                    ) : profile ? (
-                        <>
-                            <div className="text-right hidden sm:block">
-                                <p className="text-xs font-semibold text-slate-800 leading-none">
-                                    {profile.nombre} {profile.apellido_paterno}
-                                </p>
-                                <p className="text-[10px] text-slate-400 mt-0.5 capitalize">
-                                    {rolLabels[profile.rol] ?? profile.rol}
-                                </p>
-                            </div>
-                            <div className="w-8 h-8 bg-navy-100 rounded-full flex items-center justify-center text-navy-700">
-                                <LuUser className="w-4 h-4" />
-                            </div>
-                            <LuChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`} />
-                        </>
-                    ) : (
-                        <span className="text-sm text-slate-400">Sin sesión</span>
-                    )}
-                </button>
-
-                {profileOpen && profile && (
-                    <div className="absolute top-[calc(100%+8px)] right-0 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                        {/* Cabecera del perfil */}
-                        <div className="px-4 py-4 border-b border-slate-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-navy-100 rounded-full flex items-center justify-center text-navy-700 shrink-0">
-                                    <LuUser className="w-5 h-5" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-slate-900 truncate">
-                                        {profile.nombre} {profile.apellido_paterno}
-                                    </p>
-                                    <p className="text-xs text-slate-400 truncate mt-0.5">{profile.email}</p>
-                                </div>
-                            </div>
-                            <div className="mt-3 flex items-center gap-2">
-                                <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold capitalize ${rolColors[profile.rol] ?? "bg-slate-100 text-slate-700"}`}>
-                                    {rolLabels[profile.rol] ?? profile.rol}
-                                </span>
-                                {profile.rfc && (
-                                    <span className="text-[10px] text-slate-400 font-mono">{profile.rfc}</span>
+                    {notiOpen && (
+                        <div className="absolute top-[calc(100%+8px)] right-0 w-80 sm:w-96 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                                <h3 className="text-sm font-semibold text-slate-900">Notificaciones</h3>
+                                {noLeidas > 0 && (
+                                    <span className="text-xs bg-rose-50 text-rose-600 border border-rose-200 px-2.5 py-0.5 rounded-full font-semibold">
+                                        {noLeidas} nuevas
+                                    </span>
                                 )}
                             </div>
-                        </div>
 
-                        {/* Acciones */}
-                        <div className="py-1">
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-left cursor-pointer">
-                                <LuSettings className="w-4 h-4 shrink-0 text-slate-400" />
-                                Configuración
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    await fetch('/api/auth/logout', { method: 'POST' });
-                                    window.location.replace('/auth/login');
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
-                            >
-                                <LuLogOut className="w-4 h-4 shrink-0" />
-                                Cerrar sesión
-                            </button>
+                            <ul className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+                                {isLoadingNotis ? (
+                                    Array.from({ length: 3 }).map((_, i) => (
+                                        <li key={i} className="flex items-start gap-3 px-4 py-3 animate-pulse">
+                                            <span className="w-8 h-8 rounded-xl bg-slate-100 shrink-0" />
+                                            <div className="flex-1 flex flex-col gap-1.5">
+                                                <div className="h-3 w-3/4 bg-slate-200 rounded" />
+                                                <div className="h-2 w-1/2 bg-slate-100 rounded" />
+                                            </div>
+                                        </li>
+                                    ))
+                                ) : notificaciones.length === 0 ? (
+                                    <li className="px-4 py-8 text-center text-xs text-slate-400 italic">
+                                        No tienes notificaciones
+                                    </li>
+                                ) : (
+                                    notificaciones.map((noti) => {
+                                        const IconComponent = tipoIcons[noti.tipo] || LuBell;
+                                        const fecha = new Date(noti.created_at).toLocaleTimeString("es-MX", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            hour12: false,
+                                        });
+
+                                        return (
+                                            <li key={noti.id}>
+                                                <button
+                                                    onClick={() => handleNotiClick(noti)}
+                                                    className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-slate-50/80 transition-colors cursor-pointer ${
+                                                        !noti.leida ? "bg-navy-50/40" : ""
+                                                    }`}
+                                                >
+                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                                        !noti.leida ? "bg-navy-600 text-white" : "bg-slate-100 text-slate-500"
+                                                    }`}>
+                                                        <IconComponent className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between gap-1">
+                                                            <p className={`text-xs truncate ${!noti.leida ? "font-bold text-slate-900" : "font-semibold text-slate-700"}`}>
+                                                                {noti.titulo}
+                                                            </p>
+                                                            <span className="text-[10px] text-slate-400 shrink-0">{fecha}</span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-500 line-clamp-2 mt-0.5 leading-snug">
+                                                            {noti.mensaje}
+                                                        </p>
+                                                    </div>
+                                                    {!noti.leida && (
+                                                        <span className="w-2 h-2 rounded-full bg-navy-600 shrink-0 mt-2" />
+                                                    )}
+                                                </button>
+                                            </li>
+                                        );
+                                    })
+                                )}
+                            </ul>
+
+                            {notificaciones.length > 0 && (
+                                <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                                    <button
+                                        onClick={handleMarcarTodasLeidas}
+                                        className="text-xs text-navy-600 hover:text-navy-800 font-medium transition-colors cursor-pointer"
+                                    >
+                                        Marcar todas como leídas
+                                    </button>
+                                </div>
+                            )}
                         </div>
+                    )}
+                </div>
+
+                {/* ── PERFIL ─────────────────────────────────────── */}
+                <div ref={profileRef} className="relative">
+                    <button
+                        onClick={() => { setProfileOpen(!profileOpen); setNotiOpen(false); }}
+                        className="flex items-center gap-3 h-10 pl-2 pr-3 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                        {isLoading ? (
+                            <div className="flex gap-2 items-center animate-pulse">
+                                <div className="h-3.5 w-24 bg-slate-200 rounded" />
+                                <div className="w-7 h-7 bg-slate-200 rounded-full" />
+                            </div>
+                        ) : profile ? (
+                            <>
+                                <div className="text-right hidden sm:block">
+                                    <p className="text-xs font-semibold text-slate-800 leading-none">
+                                        {profile.nombre} {profile.apellido_paterno}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 capitalize">
+                                        {rolLabels[profile.rol] ?? profile.rol}
+                                    </p>
+                                </div>
+                                <div className="w-8 h-8 bg-navy-100 rounded-full flex items-center justify-center text-navy-700">
+                                    <LuUser className="w-4 h-4" />
+                                </div>
+                                <LuChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`} />
+                            </>
+                        ) : (
+                            <span className="text-sm text-slate-400">Sin sesión</span>
+                        )}
+                    </button>
+
+                    {profileOpen && profile && (
+                        <div className="absolute top-[calc(100%+8px)] right-0 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                            {/* Cabecera del perfil */}
+                            <div className="px-4 py-4 border-b border-slate-100">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-navy-100 rounded-full flex items-center justify-center text-navy-700 shrink-0">
+                                        <LuUser className="w-5 h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-slate-900 truncate">
+                                            {profile.nombre} {profile.apellido_paterno}
+                                        </p>
+                                        <p className="text-xs text-slate-400 truncate mt-0.5">{profile.email}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex items-center gap-2">
+                                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold capitalize ${rolColors[profile.rol] ?? "bg-slate-100 text-slate-700"}`}>
+                                        {rolLabels[profile.rol] ?? profile.rol}
+                                    </span>
+                                    {profile.rfc && (
+                                        <span className="text-[10px] text-slate-400 font-mono">{profile.rfc}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Acciones */}
+                            <div className="py-1">
+                                <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-left cursor-pointer">
+                                    <LuSettings className="w-4 h-4 shrink-0 text-slate-400" />
+                                    Configuración
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        await fetch('/api/auth/logout', { method: 'POST' });
+                                        window.location.replace('/auth/login');
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
+                                >
+                                    <LuLogOut className="w-4 h-4 shrink-0" />
+                                    Cerrar sesión
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </header>
+
+            {/* ── TOAST FLOTANTE DE NOTIFICACIÓN EN TIEMPO REAL ───────────── */}
+            {activeToast && (
+                <div
+                    onClick={() => handleNotiClick(activeToast)}
+                    className="fixed bottom-6 right-6 z-[100] max-w-sm bg-navy-950 text-white p-4 rounded-2xl shadow-2xl border border-navy-700 flex items-start gap-3.5 cursor-pointer animate-in fade-in slide-in-from-bottom-5 duration-300 hover:bg-navy-900 transition-colors"
+                >
+                    <div className="p-2 bg-navy-800 rounded-xl text-emerald-400 mt-0.5 shrink-0">
+                        <LuBell className="w-5 h-5 animate-bounce" />
                     </div>
-                )}
-            </div>
-        </header>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-white">{activeToast.titulo}</p>
+                        <p className="text-xs text-slate-300 mt-0.5 leading-snug line-clamp-2">{activeToast.mensaje}</p>
+                    </div>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveToast(null);
+                        }}
+                        className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-navy-800 transition-colors"
+                    >
+                        <LuX className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
+        </>
     );
 }

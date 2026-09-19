@@ -26,6 +26,36 @@ export class CarpetasService {
             .single();
 
         if (error) throw new Error(error.message);
+
+        // Notificación condicional:
+        // Si lo subió el cliente, verificamos si tiene contador asignado
+        if (user.id === cliente_id) {
+            const { UserRepository } = await import('@/core/repositories/usuarios.repository');
+            const { NotificacionesRepository } = await import('@/core/repositories/notificaciones.repository');
+            const perfilCliente = await UserRepository.getPerfil(cliente_id);
+
+            const nombreCliente = `${perfilCliente.nombre || 'Cliente'} ${perfilCliente.apellido_paterno || ''}`.trim();
+
+            if (perfilCliente?.contador_id) {
+                // Notificar al contador asignado
+                NotificacionesRepository.crearNotificacion({
+                    usuario_id: perfilCliente.contador_id,
+                    titulo: 'Nuevo Documento en Carpeta',
+                    mensaje: `${nombreCliente} subió "${dto.nombre_archivo}" a su carpeta general.`,
+                    tipo: 'archivo',
+                    url_destino: `/contador/dashboard/clients/details?cliente_id=${cliente_id}`,
+                }).catch(console.error);
+            } else {
+                // Notificar a admins si el cliente aún no tiene contador
+                NotificacionesRepository.crearNotificacionParaAdmins({
+                    titulo: 'Nuevo Documento (Sin Contador)',
+                    mensaje: `${nombreCliente} subió "${dto.nombre_archivo}" a su carpeta general.`,
+                    tipo: 'archivo',
+                    url_destino: '/admin/dashboard/folders',
+                }).catch(console.error);
+            }
+        }
+
         return data;
     }
     // admin consulta las carpetas de todos los clientes agrupados por contador
