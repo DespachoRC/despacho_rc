@@ -33,20 +33,20 @@ export function Sidebar() {
 
     const adminNavItems = [
         { name: "Métricas", href: "/dashboard/metrics", icon: LuLayoutPanelLeft },
-        { name: "Gestión de Usuarios", href: "/dashboard/users-management", icon: LuUsers },
+        { name: "Gestión de usuarios", href: "/dashboard/users-management", icon: LuUsers },
         { name: "Catálogos", href: "/dashboard/catalogs", icon: LuBookOpen },
-        { name: "Cotizaciones y Tareas", href: "/dashboard/tasks", icon: LuClipboardList },
-        { name: "Carpetas Generales", href: "/dashboard/folders", icon: LuFolderOpen },
+        { name: "Cotizaciones", href: "/dashboard/tasks", icon: LuClipboardList },
+        { name: "Carpetas generales", href: "/dashboard/folders", icon: LuFolderOpen },
     ];
 
     const clienteNavItems = [
-        { name: "Cargar Documentación", href: "/cliente/dashboard/upload", icon: LuUpload },
-        { name: "Mis Presupuestos", href: "/cliente/dashboard/budgets", icon: LuReceiptText },
-        { name: "Mis Resultados", href: "/cliente/dashboard/results", icon: LuChartBar },
+        { name: "Cargar documentación", href: "/cliente/dashboard/upload", icon: LuUpload },
+        { name: "Mis presupuestos", href: "/cliente/dashboard/budgets", icon: LuReceiptText },
+        { name: "Mis resultados", href: "/cliente/dashboard/results", icon: LuChartBar },
     ];
 
     const contadorNavItems = [
-        { name: "Mis Clientes", href: "/contador/dashboard/clients", icon: LuBriefcase },
+        { name: "Mis clientes", href: "/contador/dashboard/clients", icon: LuBriefcase },
     ];
 
     const navItems =
@@ -70,7 +70,7 @@ export function Sidebar() {
                 />
             </div>
 
-            <div className="w-8 group-hover/sidebar:w-[220px] h-px bg-navy-700 mb-4 transition-[width] duration-300" />
+            <div className="w-8 group-hover/sidebar:w-[220px] h-px bg-white/20 mb-4 transition-[width] duration-300" />
 
             <nav className="flex-1 w-full flex flex-col items-center gap-1 px-2 overflow-hidden">
                 {navItems.map((item) => {
@@ -89,7 +89,7 @@ export function Sidebar() {
                                 }`}
                         >
                             <Icon className={`w-6 h-6 shrink-0 ${isActive ? "text-white" : ""}`} />
-                            <span className="text-base font-medium whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100 overflow-hidden">
+                            <span className="text-base font-medium whitespace-normal leading-tight opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100 overflow-hidden flex-1 text-left">
                                 {item.name}
                             </span>
                             {isActive && (
@@ -100,7 +100,7 @@ export function Sidebar() {
                 })}
             </nav>
 
-            <div className="w-8 group-hover/sidebar:w-[220px] h-px bg-navy-700 mb-4 transition-[width] duration-300" />
+            <div className="w-8 group-hover/sidebar:w-[220px] h-px bg-white/20 mb-4 transition-[width] duration-300" />
 
             <div className="w-full flex flex-col gap-2 px-2">
                 <div className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200">
@@ -138,7 +138,7 @@ export function Sidebar() {
                                text-slate-400 hover:bg-rose-900/30 hover:text-rose-400 transition-all duration-200 bg-transparent border-none"
                 >
                     <LuLogOut className="w-6 h-6 shrink-0" />
-                    <span className="text-base font-medium whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100">
+                    <span className="text-base font-medium whitespace-normal leading-tight opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100 flex-1 text-left">
                         Cerrar sesión
                     </span>
                 </button>

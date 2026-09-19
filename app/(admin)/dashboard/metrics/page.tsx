@@ -82,7 +82,7 @@ export default function Metrics() {
     return (
         <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pr-1">
             <PageHeader
-                title="Panel de Control"
+                title="Panel de control"
                 subtitle="Resumen general del despacho"
             />
 

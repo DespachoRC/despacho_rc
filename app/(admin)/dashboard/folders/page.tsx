@@ -50,7 +50,7 @@ export default function Folders() {
     return (
         <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pr-1">
             <PageHeader 
-                title="Carpetas Generales" 
+                title="Carpetas generales" 
                 subtitle="Documentos generales subidos por los clientes, organizados por contador asignado" 
             />
 

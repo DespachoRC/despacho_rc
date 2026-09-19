@@ -66,7 +66,7 @@ export default function BudgetsPage() {
     return (
         <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pr-1">
             <PageHeader 
-                title="Mis Presupuestos" 
+                title="Mis presupuestos" 
                 subtitle="Revisa las cotizaciones enviadas por el despacho y toma una decisión" 
             />
 

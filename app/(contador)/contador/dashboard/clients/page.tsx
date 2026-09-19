@@ -47,7 +47,7 @@ export default function ClientsPage() {
     return (
         <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pr-1">
             <PageHeader
-                title="Mis Clientes"
+                title="Mis clientes"
                 subtitle="Vista general de los clientes de tu cartera"
             />
 

@@ -277,7 +277,7 @@ export default function UsersManagement() {
     return (
         <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pr-1">
             <PageHeader 
-                title="Gestión de Usuarios" 
+                title="Gestión de usuarios" 
                 subtitle="Registra y administra clientes y contadores del despacho"
                 action={
                     !isCreating ? (

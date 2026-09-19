@@ -17,10 +17,10 @@ type CatalogoSection = {
 };
 
 const SECCIONES: CatalogoSection[] = [
-    { titulo: "Regímenes Fiscales",            tabla: "regimenes_fiscales",   icon: <LuFileText /> },
-    { titulo: "Tipos de Documento / Tarea",    tabla: "catalogo_actividades", icon: <LuBriefcase /> },
-    { titulo: "Especialidades de Contadores",  tabla: "especialidad_contador", icon: <LuBriefcase /> },
-    { titulo: "Categorías de Documentos",      tabla: "categoria_documentos", icon: <LuFolderOpen /> },
+    { titulo: "Regímenes fiscales",            tabla: "regimenes_fiscales",   icon: <LuFileText /> },
+    { titulo: "Tipos de documento / tarea",    tabla: "catalogo_actividades", icon: <LuBriefcase /> },
+    { titulo: "Especialidades de contadores",  tabla: "especialidad_contador", icon: <LuBriefcase /> },
+    { titulo: "Categorías de documentos",      tabla: "categoria_documentos", icon: <LuFolderOpen /> },
 ];
 
 function CatalogoCard({ seccion }: { seccion: CatalogoSection }) {
@@ -184,7 +184,7 @@ export default function Catalogs() {
     return (
         <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pr-1">
             <PageHeader
-                title="Catálogos del Sistema"
+                title="Catálogos del sistema"
                 subtitle="Administra los valores de referencia utilizados en toda la plataforma"
             />
 

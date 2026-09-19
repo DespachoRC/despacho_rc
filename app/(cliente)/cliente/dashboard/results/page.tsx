@@ -158,7 +158,7 @@ export default function ResultsPage() {
         <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pr-1">
             <div className="flex items-start justify-between gap-4">
                 <PageHeader 
-                    title="Mis Resultados" 
+                    title="Mis resultados" 
                     subtitle="Historial de declaraciones y documentos entregados por el despacho" 
                 />
 

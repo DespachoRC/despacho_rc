@@ -9,9 +9,9 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
     return (
         <div className="flex justify-between items-start mb-6">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-2xl font-bold text-navy-950">{title}</h1>
-                {subtitle && <p className="text-base text-slate-600">{subtitle}</p>}
+            <div className="flex flex-col gap-1.5">
+                <h1 className="text-3xl font-bold text-navy-950 tracking-tight">{title}</h1>
+                {subtitle && <p className="text-base text-slate-600 font-medium">{subtitle}</p>}
             </div>
             {action && (
                 <div>

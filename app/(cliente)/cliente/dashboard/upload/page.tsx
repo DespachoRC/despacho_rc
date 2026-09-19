@@ -101,7 +101,7 @@ export default function UploadPage() {
     return (
         <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pr-1">
             <PageHeader 
-                title="Cargar Documentación" 
+                title="Cargar documentación" 
                 subtitle="Selecciona los tipos de tarea y adjunta los documentos requeridos" 
             />
 
