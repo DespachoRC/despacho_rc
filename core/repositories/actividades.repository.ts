@@ -104,7 +104,7 @@ export class ActividadesRepository {
             .from('actividades')
             .select(`
                 *,
-                documentos(id, nombre_archivo, ruta_archivo),
+                documentos(id, nombre_archivo, ruta_archivo, subido_por_id),
                 estatus_actividad(nombre),
                 cotizaciones(titulo, descripcion)
             `)

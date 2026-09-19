@@ -30,7 +30,7 @@ type HistorialItem = {
     periodo: string;
     fechaEntrega: string | null;
     estatus: Estatus;
-    documentoId: string | null;
+    documentos: { id: string; nombre_archivo: string }[];
 };
 
 export default function ResultsPage() {
@@ -60,17 +60,13 @@ export default function ResultsPage() {
                         if (act.estatus_actividad.nombre === "completada") estatus = "Listo";
                         else if (act.estatus_actividad.nombre === "en_proceso") estatus = "En Proceso";
                         
-                        const docId = (act.documentos && act.documentos.length > 0) 
-                            ? act.documentos[act.documentos.length - 1].id 
-                            : null;
-                        
                         return {
                             id: act.id,
                             tipo: act.titulo || "Actividad", 
                             periodo: new Date(act.fecha_creacion || act.created_at).toLocaleDateString(),
                             fechaEntrega: act.estatus_actividad.nombre === "completada" ? new Date(act.updated_at || act.created_at).toLocaleDateString() : null,
                             estatus,
-                            documentoId: docId
+                            documentos: (act.documentos || []).filter((doc: any) => doc.subido_por_id && doc.subido_por_id !== act.cliente_id)
                         };
                     });
                     setHistorial(mapped);
@@ -271,8 +267,7 @@ export default function ResultsPage() {
                                 </tr>
                             ) : historial.map((fila) => {
                                 const badge = estatusBadge[fila.estatus];
-                                const canDownload = fila.estatus === "Listo" && fila.documentoId;
-                                const isDownloading = downloadingId === fila.documentoId;
+                                const canDownload = fila.estatus === "Listo" && fila.documentos.length > 0;
 
                                 return (
                                     <tr key={fila.id} className="hover:bg-slate-50/60 transition-colors">
@@ -295,16 +290,24 @@ export default function ResultsPage() {
                                         <td className="py-4 pr-4">
                                             <Badge variant={badge.variant} text={badge.text} />
                                         </td>
-                                        <td className="py-4">
+                                        <td className="py-4 pr-4">
                                             {canDownload ? (
-                                                <button 
-                                                    onClick={() => handleDownload(fila.documentoId!)}
-                                                    disabled={isDownloading}
-                                                    className="flex items-center gap-1.5 border border-navy-200 bg-navy-50 hover:bg-navy-100 disabled:opacity-50 disabled:bg-slate-50 text-navy-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                                                >
-                                                    {isDownloading ? <LuLoader className="w-3.5 h-3.5 animate-spin" /> : <LuDownload className="w-3.5 h-3.5" />}
-                                                    {isDownloading ? "Descargando..." : "Descargar"}
-                                                </button>
+                                                <div className="flex flex-col gap-2 items-start">
+                                                    {fila.documentos.map((doc, idx) => (
+                                                        <button 
+                                                            key={doc.id}
+                                                            onClick={() => handleDownload(doc.id)}
+                                                            disabled={downloadingId === doc.id}
+                                                            className="flex items-center gap-1.5 border border-navy-200 bg-navy-50 hover:bg-navy-100 disabled:opacity-50 disabled:bg-slate-50 text-navy-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer w-full"
+                                                            title={doc.nombre_archivo}
+                                                        >
+                                                            {downloadingId === doc.id ? <LuLoader className="w-3.5 h-3.5 animate-spin" /> : <LuDownload className="w-3.5 h-3.5 shrink-0" />}
+                                                            <span className="truncate max-w-[120px]">
+                                                                {downloadingId === doc.id ? "Descargando..." : (fila.documentos.length > 1 ? `Descargar (${idx + 1})` : "Descargar")}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             ) : fila.estatus !== "Listo" ? (
                                                 <button 
                                                     onClick={() => handleOpenUploadModal(fila.id)}

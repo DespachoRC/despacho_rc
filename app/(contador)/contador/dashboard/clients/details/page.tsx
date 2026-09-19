@@ -11,6 +11,7 @@ import {
     LuUpload,
     LuFolder,
     LuFileText,
+    LuX
 } from "react-icons/lu";
 import { FileAttachment } from "@/app/components/ui/FileAttachment";
 import { ChatBox } from "@/app/components/ui/ChatBox";
@@ -27,7 +28,7 @@ function ClientDetailsContent() {
     const [archivosGenerales, setArchivosGenerales] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [selectedActividadId, setSelectedActividadId] = useState<string>("");
-    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+    const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
 
     // Chat: conversación con este cliente
     const [conversacionId, setConversacionId] = useState<string | null>(null);
@@ -75,11 +76,13 @@ function ClientDetailsContent() {
     }, [cliente_id]);
 
     const handleUploadEntregable = async () => {
-        if (!selectedActividadId || !fileToUpload) return;
+        if (!selectedActividadId || filesToUpload.length === 0) return;
         setIsUploading(true);
         try {
             const formData = new FormData();
-            formData.append('archivo', fileToUpload);
+            for (const file of filesToUpload) {
+                formData.append('archivo', file);
+            }
             
             const res = await fetch(`/api/actividades/${selectedActividadId}/entregables`, {
                 method: 'POST',
@@ -87,8 +90,8 @@ function ClientDetailsContent() {
             });
             const json = await res.json();
             if (json.success) {
-                alert("Entregable subido exitosamente");
-                setFileToUpload(null);
+                alert("Entregables subidos exitosamente");
+                setFilesToUpload([]);
             } else {
                 alert(`Error: ${json.error}`);
             }
@@ -307,29 +310,59 @@ function ClientDetailsContent() {
                             <label className="text-[11px] font-bold text-slate-500 tracking-wider block uppercase">
                                 Archivo Entregable
                             </label>
-                            <label className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center bg-slate-50/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 hover:border-navy-300 group transition-colors">
+                            <label className="relative border-2 border-dashed border-slate-300 rounded-xl p-8 text-center bg-slate-50/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 hover:border-navy-300 group transition-colors">
                                 <LuUpload className="w-6 h-6 text-slate-400 group-hover:text-navy-600 transition-colors" />
                                 <span className="text-sm font-semibold text-slate-700 group-hover:text-navy-700">
-                                    {fileToUpload ? fileToUpload.name : "Arrastra aquí el documento entregable final"}
+                                    {filesToUpload.length > 0 
+                                        ? `${filesToUpload.length} archivo(s) seleccionado(s)` 
+                                        : "Arrastra aquí los documentos entregables finales"}
                                 </span>
+                                {filesToUpload.length > 0 && (
+                                    <div className="flex flex-col gap-2 mt-3 items-center w-full z-10" onClick={(e) => e.preventDefault()}>
+                                        {filesToUpload.map((f, i) => (
+                                            <div key={i} className="flex items-center justify-between gap-3 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 w-full max-w-[280px]">
+                                                <span className="text-xs text-slate-600 truncate">{f.name}</span>
+                                                <button 
+                                                    type="button"
+                                                    className="p-1 bg-red-50 text-red-500 rounded-md hover:bg-red-100 transition-colors shrink-0"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        setFilesToUpload(prev => prev.filter((_, idx) => idx !== i));
+                                                    }}
+                                                >
+                                                    <LuX className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 <input 
                                     type="file" 
-                                    className="hidden" 
+                                    multiple
+                                    className="absolute inset-0 opacity-0 cursor-pointer" 
                                     onChange={(e) => {
-                                        if (e.target.files && e.target.files[0]) {
-                                            setFileToUpload(e.target.files[0]);
+                                        if (e.target.files && e.target.files.length > 0) {
+                                            const newFiles = Array.from(e.target.files);
+                                            setFilesToUpload(prev => {
+                                                const existingNames = new Set(prev.map(f => f.name));
+                                                const uniqueNew = newFiles.filter(f => !existingNames.has(f.name));
+                                                return [...prev, ...uniqueNew];
+                                            });
                                         }
+                                        // Resetear valor para que permita subir el mismo archivo si fue eliminado por error
+                                        e.target.value = '';
                                     }} 
                                 />
                             </label>
                         </div>
 
                         <Button
-                            text={isUploading ? "Subiendo..." : "Subir Documento y Notificar al Cliente"}
+                            text={isUploading ? "Subiendo..." : "Subir Documento(s) y Notificar al Cliente"}
                             icon={<LuUpload className="w-4 h-4" />}
                             className="w-full justify-center py-3.5 mt-2"
                             onClick={handleUploadEntregable}
-                            disabled={!fileToUpload || !selectedActividadId || isUploading}
+                            disabled={filesToUpload.length === 0 || !selectedActividadId || isUploading}
                         />
                     </div>
                 )}

@@ -83,51 +83,60 @@ export class ActividadesService {
     ) {
         const user = await getAuthUser(request);
 
-        const archivo = formData.get('archivo') as File;
-        if (!archivo) throw new Error('El archivo me es requerido');
+        const archivos = formData.getAll('archivo') as File[];
+        if (!archivos || archivos.length === 0) throw new Error('Se requiere al menos un archivo entregable');
 
-        const buffer = Buffer.from(await archivo.arrayBuffer());
-        const extension = archivo.name.split('.').pop();
-        const nombreUnico = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-        const rutaStorage = `actividades/${actividadId}/entregables/${nombreUnico}`;
-
-        // 1. subimos el archivo a storage
-        const rutaGuardada = await ActividadesRepository.subirArchivoStorage(
-            'documentos',
-            rutaStorage,
-            buffer,
-            archivo.type
-        );
-
-        // 2. obtenemos datos de la actividad para llenar cliente_id y organizacion_id
+        // 1. obtenemos datos de la actividad para llenar cliente_id y organizacion_id
         const actividad = await ActividadesRepository.get_actividad_data(actividadId);
 
-        // 3. marcamos la actividad como completada
+        const documentosInsertados = [];
+
+        for (const archivo of archivos) {
+            const buffer = Buffer.from(await archivo.arrayBuffer());
+            const extension = archivo.name.split('.').pop();
+            const nombreUnico = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+            const rutaStorage = `actividades/${actividadId}/entregables/${nombreUnico}`;
+
+            // 2. subimos el archivo a storage
+            const rutaGuardada = await ActividadesRepository.subirArchivoStorage(
+                'documentos',
+                rutaStorage,
+                buffer,
+                archivo.type
+            );
+
+            // 3. insertamos el documento entregable
+            const entregableDoc = await ActividadesRepository.insertarDocumento({
+                actividad_id: actividadId,
+                organizacion_id: actividad.organizacion_id,
+                cliente_id: actividad.cliente_id,
+                subido_por_id: user.id,
+                nombre_archivo: archivo.name,
+                ruta_archivo: rutaGuardada,
+            });
+            documentosInsertados.push(entregableDoc);
+        }
+
+        // 4. marcamos la actividad como completada (una sola vez)
         await ActividadesRepository.actualizarEstatus(actividadId, 'completada');
 
-        // 4. insertamos el documento entregable
-        const entregableDoc = await ActividadesRepository.insertarDocumento({
-            actividad_id: actividadId,
-            organizacion_id: actividad.organizacion_id,
-            cliente_id: actividad.cliente_id,
-            subido_por_id: user.id,
-            nombre_archivo: archivo.name,
-            ruta_archivo: rutaGuardada,
-        });
-
-        // 5. Notificar al cliente que su actividad fue completada y tiene un nuevo entregable
+        // 5. Notificar al cliente que su actividad fue completada y tiene nuevos entregables
         if (actividad.cliente_id) {
             const { NotificacionesRepository } = await import('../repositories/notificaciones.repository');
+            const mensajeExt = archivos.length > 1 
+                ? `Se completó la actividad y se subieron ${archivos.length} entregables.`
+                : `Se completó la actividad y se subió el entregable "${archivos[0].name}".`;
+
             NotificacionesRepository.crearNotificacion({
                 usuario_id: actividad.cliente_id,
                 titulo: 'Entregable Final Disponible',
-                mensaje: `Se completó la actividad y se subió el entregable "${archivo.name}".`,
+                mensaje: mensajeExt,
                 tipo: 'actividad',
                 url_destino: '/cliente/dashboard/results',
             }).catch(console.error);
         }
 
-        return entregableDoc;
+        return documentosInsertados;
     }
 
     static async getResultados(request: Request) {
