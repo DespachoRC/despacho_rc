@@ -102,6 +102,19 @@ export class ActividadesService {
 
     static async getResultados(request: Request) {
         const user = await getAuthUser(request);
+        const { UserRepository } = await import('@/core/repositories/usuarios.repository');
+        const role = await UserRepository.getRoleName(user.id);
+        
+        const url = new URL(request.url);
+        const cliente_id = url.searchParams.get('cliente_id');
+        
+        if (role === 'contador') {
+            if (!cliente_id) throw new Error('El cliente_id es requerido para el contador');
+            // TODO: Se podría validar que el cliente_id realmente pertenezca a la cartera del contador
+            return await ActividadesRepository.getResultados(cliente_id);
+        }
+
+        // Si es cliente, usa su propio ID
         return await ActividadesRepository.getResultados(user.id);
     }
 

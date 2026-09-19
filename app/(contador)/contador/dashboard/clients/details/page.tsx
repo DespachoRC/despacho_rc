@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
     LuArrowLeft,
@@ -22,29 +23,85 @@ interface Message {
     time: string;
 }
 
-export default function ClientDetailsPage() {
+function ClientDetailsContent() {
+    const searchParams = useSearchParams();
+    const cliente_id = searchParams.get('cliente_id');
     const [activeTab, setActiveTab] = useState<"insumos" | "chat" | "entregables" | "carpeta">("insumos");
+    const [clienteInfo, setClienteInfo] = useState<{nombre: string, email: string} | null>(null);
 
-    const initialMessages: Message[] = [
-        {
-            id: "1",
-            text: "Buenos días, ¿ya pudo subir los estados de cuenta de junio?",
-            sender: "despacho",
-            time: "09:15",
-        },
-        {
-            id: "2",
-            text: "Sí, los acabo de cargar. Son 3 archivos PDF.",
-            sender: "cliente",
-            time: "09:47",
-        },
-        {
-            id: "3",
-            text: "Perfecto, los revisaré y le aviso si necesito algo más. En aprox. 48 hrs tendrá su declaración.",
-            sender: "despacho",
-            time: "09:50",
-        },
-    ];
+    const [actividades, setActividades] = useState<any[]>([]);
+    const [archivosGenerales, setArchivosGenerales] = useState<any[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [selectedActividadId, setSelectedActividadId] = useState<string>("");
+    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+
+    // Fetch data
+    useEffect(() => {
+        if (cliente_id) {
+            // Cliente Info
+            fetch(`/api/users/${cliente_id}`)
+                .then(res => res.json())
+                .then(json => {
+                    if (json.success && json.data) {
+                        setClienteInfo({
+                            nombre: `${json.data.nombre || ''} ${json.data.apellido_paterno || ''}`.trim(),
+                            email: json.data.email || ''
+                        });
+                    }
+                })
+                .catch(console.error);
+
+            // Actividades (Insumos y Entregables)
+            fetch(`/api/actividades/resultados?cliente_id=${cliente_id}`)
+                .then(res => res.json())
+                .then(json => {
+                    if (json.success && json.data) {
+                        setActividades(json.data);
+                        if (json.data.length > 0) {
+                            setSelectedActividadId(json.data[0].id);
+                        }
+                    }
+                })
+                .catch(console.error);
+
+            // Carpeta General
+            fetch(`/api/carpetas/archivos?cliente_id=${cliente_id}`)
+                .then(res => res.json())
+                .then(json => {
+                    if (json.success && json.data) {
+                        setArchivosGenerales(json.data);
+                    }
+                })
+                .catch(console.error);
+        }
+    }, [cliente_id]);
+
+    const handleUploadEntregable = async () => {
+        if (!selectedActividadId || !fileToUpload) return;
+        setIsUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('archivo', fileToUpload);
+            
+            const res = await fetch(`/api/actividades/${selectedActividadId}/entregables`, {
+                method: 'POST',
+                body: formData
+            });
+            const json = await res.json();
+            if (json.success) {
+                alert("Entregable subido exitosamente");
+                setFileToUpload(null);
+                // Opcional: recargar actividades
+            } else {
+                alert(`Error: ${json.error}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error al subir archivo");
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     const tabs = [
         { id: "insumos", label: "Bandeja de Insumos", icon: LuInbox },
@@ -72,10 +129,10 @@ export default function ClientDetailsPage() {
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-navy-950">
-                            Grupo Monterrey SA de CV
+                            {clienteInfo ? clienteInfo.nombre : "Cargando cliente..."}
                         </h1>
                         <p className="text-sm text-slate-500 font-normal mt-0.5">
-                            Persona Moral · contacto@grupomonterrey.mx
+                            {clienteInfo ? clienteInfo.email : "..."}
                         </p>
                     </div>
                 </div>
@@ -105,78 +162,56 @@ export default function ClientDetailsPage() {
             <div className="flex-1 min-h-0">
                 {activeTab === "insumos" && (
                     <div className="space-y-6">
-                        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-                            <div className="flex flex-wrap justify-between items-center gap-2">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-navy-50 text-navy-600 rounded-lg">
-                                        <LuFileText className="w-5 h-5" />
-                                    </div>
-                                    <div className="flex items-baseline gap-2">
-                                        <h3 className="text-lg font-bold text-navy-950">
-                                            Declaración Mensual IVA
-                                        </h3>
-                                        <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-medium">
-                                            Junio 2025
+                        {actividades.length === 0 ? (
+                            <p className="text-slate-500 text-sm">No hay actividades para este cliente.</p>
+                        ) : (
+                            actividades.map(act => (
+                                <div key={act.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+                                    <div className="flex flex-wrap justify-between items-center gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-navy-50 text-navy-600 rounded-lg">
+                                                <LuFileText className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex items-baseline gap-2">
+                                                <h3 className="text-lg font-bold text-navy-950">
+                                                    {act.cotizaciones?.titulo || 'Actividad'}
+                                                </h3>
+                                                <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-medium">
+                                                    {act.estatus_actividad?.nombre || 'Pendiente'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs text-slate-400">
+                                            Creada: {new Date(act.created_at).toLocaleDateString()}
                                         </span>
                                     </div>
-                                </div>
-                                <span className="text-xs text-slate-400">
-                                    Recibido: 01 Jul 2025
-                                </span>
-                            </div>
+                                    
+                                    {act.cotizaciones?.descripcion && (
+                                        <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100">
+                                            <p className="text-sm text-slate-600 italic">
+                                                &quot;{act.cotizaciones.descripcion}&quot;
+                                            </p>
+                                        </div>
+                                    )}
 
-                            <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100">
-                                <p className="text-sm text-slate-600 italic">
-                                    &quot;Tengo facturas de gastos y ventas en XML, favor revisar saldo a favor del mes pasado.&quot;
-                                </p>
-                            </div>
-
-                            <div className="space-y-2 pt-1">
-                                <FileAttachment nombreArchivo="facturas_junio.pdf" />
-                                <FileAttachment nombreArchivo="gastos_junio.zip" />
-                                <FileAttachment nombreArchivo="xml_ventas_jun.zip" />
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-                            <div className="flex flex-wrap justify-between items-center gap-2">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-navy-50 text-navy-600 rounded-lg">
-                                        <LuFileText className="w-5 h-5" />
-                                    </div>
-                                    <div className="flex items-baseline gap-2">
-                                        <h3 className="text-lg font-bold text-navy-950">
-                                            Contabilidad General
-                                        </h3>
-                                        <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-medium">
-                                            Junio 2025
-                                        </span>
+                                    <div className="space-y-2 pt-1">
+                                        {act.documentos && act.documentos.map((doc: any) => (
+                                            <FileAttachment key={doc.id} nombreArchivo={doc.nombre_archivo} />
+                                        ))}
+                                        {(!act.documentos || act.documentos.length === 0) && (
+                                            <span className="text-xs text-slate-400 italic">Sin documentos adjuntos</span>
+                                        )}
                                     </div>
                                 </div>
-                                <span className="text-xs text-slate-400">
-                                    Recibido: 01 Jul 2025
-                                </span>
-                            </div>
-
-                            <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100">
-                                <p className="text-sm text-slate-600 italic">
-                                    &quot;Los estados de cuenta cubren todo junio. Hay un crédito que vence en julio.&quot;
-                                </p>
-                            </div>
-
-                            <div className="space-y-2 pt-1">
-                                <FileAttachment nombreArchivo="estados_cuenta_junio.pdf" />
-                                <FileAttachment nombreArchivo="comprobantes_banco.zip" />
-                                <FileAttachment nombreArchivo="conciliacion_junio.xlsx" />
-                            </div>
-                        </div>
+                            ))
+                        )}
                     </div>
                 )}
 
                 {activeTab === "chat" && (
                     <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-200 h-full min-h-[500px]">
                         <ChatBox
-                            titulo="Chat con Grupo Monterrey SA de CV"
+                            titulo={`Chat con ${clienteInfo ? clienteInfo.nombre : "Cliente"}`}
                             conversacionId={null}
                         />
                     </div>
@@ -192,49 +227,49 @@ export default function ClientDetailsPage() {
 
                         <div className="space-y-2">
                             <label className="text-[11px] font-bold text-slate-500 tracking-wider block uppercase">
-                                Tarea · Periodo (ID)
+                                Tarea
                             </label>
                             <select
-                                defaultValue="[T-001] Declaración Mensual IVA — Mayo 2025"
+                                value={selectedActividadId}
+                                onChange={(e) => setSelectedActividadId(e.target.value)}
                                 className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-transparent cursor-pointer"
                             >
-                                <option value="[T-001] Declaración Mensual IVA — Mayo 2025">
-                                    [T-001] Declaración Mensual IVA — Mayo 2025
-                                </option>
-                                <option value="[T-002] Declaración Mensual IVA — Junio 2025">
-                                    [T-002] Declaración Mensual IVA — Junio 2025
-                                </option>
-                                <option value="[T-003] Contabilidad General — Junio 2025">
-                                    [T-003] Contabilidad General — Junio 2025
-                                </option>
-                                <option value="[T-004] Cálculo de Nómina — Mayo 2025">
-                                    [T-004] Cálculo de Nómina — Mayo 2025
-                                </option>
+                                {actividades.length === 0 && <option value="">Sin actividades disponibles</option>}
+                                {actividades.map(act => (
+                                    <option key={act.id} value={act.id}>
+                                        {act.cotizaciones?.titulo || 'Actividad'} - {new Date(act.created_at).toLocaleDateString()}
+                                    </option>
+                                ))}
                             </select>
-                            <p className="text-xs text-slate-400 font-medium pt-0.5">
-                                ID único por tarea para evitar confusión entre solicitudes del mismo tipo.
-                            </p>
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-[11px] font-bold text-slate-500 tracking-wider block uppercase">
                                 Archivo Entregable
                             </label>
-                            <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center bg-slate-50/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 hover:border-navy-300 group transition-colors">
+                            <label className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center bg-slate-50/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 hover:border-navy-300 group transition-colors">
                                 <LuUpload className="w-6 h-6 text-slate-400 group-hover:text-navy-600 transition-colors" />
                                 <span className="text-sm font-semibold text-slate-700 group-hover:text-navy-700">
-                                    Arrastra aquí el documento entregable final
+                                    {fileToUpload ? fileToUpload.name : "Arrastra aquí el documento entregable final"}
                                 </span>
-                                <span className="text-xs text-slate-400 font-normal">
-                                    PDF, ZIP, XML, imágenes · Máx. 20 MB c/u
-                                </span>
-                            </div>
+                                <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setFileToUpload(e.target.files[0]);
+                                        }
+                                    }} 
+                                />
+                            </label>
                         </div>
 
                         <Button
-                            text="Subir Documento y Notificar al Cliente"
+                            text={isUploading ? "Subiendo..." : "Subir Documento y Notificar al Cliente"}
                             icon={<LuUpload className="w-4 h-4" />}
                             className="w-full justify-center py-3.5 mt-2"
+                            onClick={handleUploadEntregable}
+                            disabled={!fileToUpload || !selectedActividadId || isUploading}
                         />
                     </div>
                 )}
@@ -247,7 +282,7 @@ export default function ClientDetailsPage() {
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold text-navy-950">
-                                    Carpeta General — Grupo Monterrey SA de CV
+                                    Carpeta General — {clienteInfo ? clienteInfo.nombre : "Cliente"}
                                 </h2>
                                 <p className="text-sm text-slate-500 font-normal mt-1">
                                     Documentos generales subidos por el cliente. Solo lectura.
@@ -255,54 +290,45 @@ export default function ClientDetailsPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">
-                                    Tickets
-                                </span>
-                                <span className="text-xs font-medium text-slate-400">
-                                    2 archivos
-                                </span>
-                            </div>
-                            <div className="space-y-2">
-                                <FileAttachment nombreArchivo="ticket_combustible_jun.pdf" />
-                                <FileAttachment nombreArchivo="ticket_papeleria_jun.jpg" />
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">
-                                    Documentos de Afiliación
-                                </span>
-                                <span className="text-xs font-medium text-slate-400">
-                                    0 archivos
-                                </span>
-                            </div>
+                        {archivosGenerales.length === 0 ? (
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                 <p className="text-xs text-slate-400 font-normal italic">
-                                    El cliente aún no ha subido archivos en esta sección.
+                                    Esta carpeta está vacía.
                                 </p>
                             </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">
-                                    Facturas
-                                </span>
-                                <span className="text-xs font-medium text-slate-400">
-                                    2 archivos
-                                </span>
-                            </div>
-                            <div className="space-y-2">
-                                <FileAttachment nombreArchivo="factura_proveedor_001.xml" />
-                                <FileAttachment nombreArchivo="factura_proveedor_002.xml" />
-                            </div>
-                        </div>
+                        ) : (
+                            Array.from(new Set(archivosGenerales.map(a => a.categoria_documentos?.nombre || 'Otros'))).map(cat => {
+                                const filesInCat = archivosGenerales.filter(a => (a.categoria_documentos?.nombre || 'Otros') === cat);
+                                return (
+                                    <div key={cat} className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">
+                                                {cat}
+                                            </span>
+                                            <span className="text-xs font-medium text-slate-400">
+                                                {filesInCat.length} archivos
+                                            </span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {filesInCat.map(file => (
+                                                <FileAttachment key={file.id} nombreArchivo={file.nombre_archivo} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 )}
             </div>
         </div>
+    );
+}
+
+export default function ClientDetailsPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center items-center h-full">Cargando...</div>}>
+            <ClientDetailsContent />
+        </Suspense>
     );
 }

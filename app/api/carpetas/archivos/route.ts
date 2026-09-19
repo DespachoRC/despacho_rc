@@ -24,3 +24,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }
+
+// get: obtiene los archivos generales de la carpeta del cliente
+export async function GET(request: Request) {
+    try {
+        const data = await CarpetasService.getArchivosCliente(request);
+        return NextResponse.json({ success: true, data }, { status: 200 });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error interno del servidor';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
+    }
+}

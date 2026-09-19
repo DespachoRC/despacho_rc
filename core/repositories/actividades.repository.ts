@@ -105,7 +105,8 @@ export class ActividadesRepository {
             .select(`
                 *,
                 documentos(id, nombre_archivo, ruta_archivo),
-                estatus_actividad(nombre)
+                estatus_actividad(nombre),
+                cotizaciones(titulo, descripcion)
             `)
             .eq('cliente_id', clienteId)
             .order('fecha_creacion', { ascending: false });

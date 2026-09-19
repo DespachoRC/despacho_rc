@@ -8,7 +8,7 @@ export async function PUT(
 ) {
     try {
         const { id } = await params;
-        const data = await UsersService.reactivar(id, request);
+        const data = await UsersService.reactivar(id);
         return NextResponse.json({ success: true, data }, { status: 200 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error interno del servidor';

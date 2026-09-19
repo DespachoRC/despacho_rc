@@ -222,4 +222,17 @@ export class UserRepository {
         return data;
     }
 
+    // Listar clientes asignados a un contador
+    public static async findMisClientes(contadorId: string) {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('usuarios')
+            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, estatus_id, fecha_creacion, regimenes_fiscales(nombre)')
+            .eq('contador_id', contadorId)
+            .order('fecha_creacion', { ascending: false });
+
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
 }

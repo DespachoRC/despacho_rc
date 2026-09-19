@@ -98,10 +98,22 @@ export class UsersService {
         return await UserRepository.getPerfil(user.id);
     }
 
-    // reactivar un usuario inactivo
-    static async reactivar(userId: string, request: Request) {
-        await getAuthUser(request);
+    // Reactivación (cambiar estatus a Activo)
+    static async reactivar(userId: string) {
+        if (!userId) throw new Error('El ID de usuario es requerido');
         return await UserRepository.reactivar(userId);
+    }
+
+    // Obtener los clientes asignados al contador autenticado
+    static async getMisClientes(request: Request) {
+        const user = await getAuthUser(request);
+        const role = await UserRepository.getRoleName(user.id);
+        
+        if (role !== 'contador') {
+            throw new Error('Solo los contadores pueden ver su lista de clientes');
+        }
+
+        return await UserRepository.findMisClientes(user.id);
     }
 
 }

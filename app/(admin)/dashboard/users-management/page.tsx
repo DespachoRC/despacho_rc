@@ -132,6 +132,26 @@ export default function UsersManagement() {
         }
     };
 
+    const handleToggleStatus = async (id: string, currentStatusId: number) => {
+        try {
+            const isActivo = currentStatusId === 1;
+            const url = isActivo ? `/api/users/${id}` : `/api/users/${id}/reactivar`;
+            const method = isActivo ? 'DELETE' : 'PUT';
+
+            const res = await fetch(url, { method });
+            const json = await res.json();
+            
+            if (res.ok && json.success) {
+                toast.success(isActivo ? 'Usuario inactivado' : 'Usuario activado exitosamente');
+                fetchUsers();
+            } else {
+                toast.error(json.error || 'Error al actualizar el estatus');
+            }
+        } catch (error) {
+            toast.error('Error de red al intentar actualizar el estatus');
+        }
+    };
+
     const tabsData = [
         { label: "Clientes", count: clientes.length, value: "clientes" },
         { label: "Contadores", count: contadores.length, value: "contadores" },
@@ -157,13 +177,17 @@ export default function UsersManagement() {
         },
         {
             header: "Acción",
-            cell: () => (
-                <Button 
-                    text="Dar de Baja" 
-                    variant="destructive" 
-                    className="px-3 py-1.5 text-xs" 
-                />
-            )
+            cell: (item) => {
+                const isActivo = item.estatus_id === 1;
+                return (
+                    <Button 
+                        text={isActivo ? "Inactivar" : "Activar"} 
+                        variant={isActivo ? "destructive" : "outline"} 
+                        className="px-3 py-1.5 text-xs"
+                        onClick={() => handleToggleStatus(item.id, item.estatus_id)}
+                    />
+                );
+            }
         }
     ];
 
@@ -187,13 +211,17 @@ export default function UsersManagement() {
         },
         {
             header: "Acción",
-            cell: () => (
-                <Button 
-                    text="Inactivar" 
-                    variant="destructive" 
-                    className="px-3 py-1.5 text-xs" 
-                />
-            )
+            cell: (item) => {
+                const isActivo = item.estatus_id === 1;
+                return (
+                    <Button 
+                        text={isActivo ? "Inactivar" : "Activar"} 
+                        variant={isActivo ? "destructive" : "outline"} 
+                        className="px-3 py-1.5 text-xs"
+                        onClick={() => handleToggleStatus(item.id, item.estatus_id)}
+                    />
+                );
+            }
         }
     ];
 

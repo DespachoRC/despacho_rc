@@ -15,6 +15,7 @@ export const SubirArchivoGeneralSchema = z.object({
     nombre_archivo: z.string().min(1, "El nombre del archivo es requerido"),
     url_archivo: z.string().url("La url del archivo no es valida"),
     tipo_archivo_id: z.string().uuid("El tipo_archivo_id debe ser un uuid valido"),
+    cliente_id: z.string().uuid("El cliente_id debe ser un uuid valido").optional(),
 });
 
 // --- tipos inferidos para usar en los servicios ---
