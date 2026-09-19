@@ -16,6 +16,7 @@ export default function UploadPage() {
     const [carpetas, setCarpetas] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedTareas, setSelectedTareas] = useState<string[]>([]);
+    const [notas, setNotas] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSolicitarActividades = async () => {
@@ -32,6 +33,7 @@ export default function UploadPage() {
                     body: JSON.stringify({
                         titulo: tipo ? tipo.nombre : 'Solicitud de actividad',
                         actividad_catalogo_id: tareaId,
+                        notas_cliente: notas[tareaId] || ''
                     })
                 });
                 if (!res.ok) errores++;
@@ -44,6 +46,7 @@ export default function UploadPage() {
                 toast.error('No se pudieron generar las solicitudes. Intenta de nuevo.');
             }
             setSelectedTareas([]); // limpiar seleccion siempre
+            setNotas({});
         } catch (error) {
             toast.error('Error de conexión al generar las solicitudes');
         } finally {
@@ -192,6 +195,25 @@ export default function UploadPage() {
                         ))
                     )}
                 </div>
+                {selectedTareas.length > 0 && (
+                    <div className="flex flex-col gap-4 mt-4 animate-in fade-in duration-300">
+                        <h3 className="text-sm font-semibold text-navy-900 border-b border-slate-100 pb-2">Contexto adicional (Opcional)</h3>
+                        {selectedTareas.map(tareaId => {
+                            const tipo = tiposTarea.find(t => t.id === tareaId);
+                            return (
+                                <div key={tareaId} className="flex flex-col gap-2">
+                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{tipo?.nombre}</label>
+                                    <textarea
+                                        value={notas[tareaId] || ''}
+                                        onChange={(e) => setNotas({ ...notas, [tareaId]: e.target.value })}
+                                        placeholder="Escribe alguna nota, instrucción o detalle sobre esta solicitud..."
+                                        className="w-full h-20 p-3 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-navy-600 focus:border-transparent outline-none resize-none transition-all"
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
                 {selectedTareas.length > 0 && (
                     <div className="flex justify-end pt-2 border-t border-slate-100">
                         <button

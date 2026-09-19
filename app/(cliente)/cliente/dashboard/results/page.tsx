@@ -10,8 +10,11 @@ import {
     LuFileText,
     LuDownload,
     LuMessageSquare,
-    LuLoader
+    LuLoader,
+    LuUpload,
+    LuX
 } from "react-icons/lu";
+import toast from "react-hot-toast";
 
 type Estatus = "Listo" | "En Proceso" | "Pendiente";
 
@@ -36,6 +39,12 @@ export default function ResultsPage() {
     const [historial, setHistorial] = useState<HistorialItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+    // Upload states
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [uploadActividadId, setUploadActividadId] = useState<string | null>(null);
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Chat states
     const [conversacionId, setConversacionId] = useState<string | null>(null);
@@ -117,6 +126,46 @@ export default function ResultsPage() {
             alert("Error al descargar el archivo");
         } finally {
             setDownloadingId(null);
+        }
+    };
+
+    const handleOpenUploadModal = (actividadId: string) => {
+        setUploadActividadId(actividadId);
+        setUploadFile(null);
+        setIsUploadModalOpen(true);
+    };
+
+    const handleCloseUploadModal = () => {
+        setIsUploadModalOpen(false);
+        setUploadActividadId(null);
+        setUploadFile(null);
+    };
+
+    const handleUploadSubmit = async () => {
+        if (!uploadActividadId || !uploadFile) return;
+        setIsUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('archivo', uploadFile);
+
+            const res = await fetch(`/api/actividades/${uploadActividadId}/insumos`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const json = await res.json();
+            if (json.success) {
+                toast.success('Documento subido correctamente');
+                handleCloseUploadModal();
+                // Opcional: Recargar historial para reflejar el documento
+                // window.location.reload(); 
+            } else {
+                toast.error(json.error || 'Error al subir documento');
+            }
+        } catch (error) {
+            toast.error('Error de conexión');
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -256,6 +305,14 @@ export default function ResultsPage() {
                                                     {isDownloading ? <LuLoader className="w-3.5 h-3.5 animate-spin" /> : <LuDownload className="w-3.5 h-3.5" />}
                                                     {isDownloading ? "Descargando..." : "Descargar"}
                                                 </button>
+                                            ) : fila.estatus !== "Listo" ? (
+                                                <button 
+                                                    onClick={() => handleOpenUploadModal(fila.id)}
+                                                    className="flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                                                >
+                                                    <LuUpload className="w-3.5 h-3.5" />
+                                                    Subir Documento
+                                                </button>
                                             ) : (
                                                 <span className="text-slate-300 pl-1">—</span>
                                             )}
@@ -267,6 +324,57 @@ export default function ResultsPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Modal de Subida de Documentos */}
+            {isUploadModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-semibold text-navy-950">Subir Documento</h3>
+                            <button onClick={handleCloseUploadModal} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <LuX className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-sm text-slate-600 mb-4">
+                                Adjunta el archivo o comprobante necesario para que el contador pueda procesar esta actividad.
+                            </p>
+                            
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-slate-50 hover:border-navy-300 transition-colors cursor-pointer relative">
+                                <LuUpload className="w-6 h-6 text-slate-400 mb-2" />
+                                <span className="text-sm font-medium text-slate-700">
+                                    {uploadFile ? uploadFile.name : "Haz clic para seleccionar archivo"}
+                                </span>
+                                <input 
+                                    type="file" 
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files.length > 0) {
+                                            setUploadFile(e.target.files[0]);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 bg-slate-50 flex justify-end gap-3 border-t border-slate-100">
+                            <button 
+                                onClick={handleCloseUploadModal}
+                                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={handleUploadSubmit}
+                                disabled={!uploadFile || isUploading}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-navy-600 hover:bg-navy-700 disabled:bg-navy-300 rounded-lg shadow-sm transition-colors"
+                            >
+                                {isUploading ? <LuLoader className="w-4 h-4 animate-spin" /> : <LuUpload className="w-4 h-4" />}
+                                {isUploading ? "Subiendo..." : "Subir Documento"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
