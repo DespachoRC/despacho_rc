@@ -20,7 +20,7 @@ import { Button } from "@/app/components/ui/Button";
 function ClientDetailsContent() {
     const searchParams = useSearchParams();
     const cliente_id = searchParams.get('cliente_id');
-    const [activeTab, setActiveTab] = useState<"insumos" | "chat" | "entregables" | "carpeta">("insumos");
+    const [activeTab, setActiveTab] = useState<"actividades" | "chat" | "entregables" | "carpeta">("actividades");
     const [clienteInfo, setClienteInfo] = useState<{nombre: string, email: string} | null>(null);
 
     const [actividades, setActividades] = useState<any[]>([]);
@@ -157,7 +157,7 @@ function ClientDetailsContent() {
     };
 
     const tabs = [
-        { id: "insumos", label: "Bandeja de Insumos", icon: LuInbox },
+        { id: "actividades", label: "Bandeja de Actividades", icon: LuInbox },
         { id: "chat", label: "Chat Operativo", icon: LuMessageSquare },
         { id: "entregables", label: "Cargar Entregables", icon: LuUpload },
         { id: "carpeta", label: "Carpeta General", icon: LuFolder },
@@ -213,7 +213,7 @@ function ClientDetailsContent() {
             </div>
 
             <div className="flex-1 min-h-0">
-                {activeTab === "insumos" && (
+                {activeTab === "actividades" && (
                     <div className="space-y-6">
                         {actividades.length === 0 ? (
                             <p className="text-slate-500 text-sm">No hay actividades para este cliente.</p>

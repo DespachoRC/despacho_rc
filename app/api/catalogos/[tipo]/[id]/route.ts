@@ -21,3 +21,20 @@ export async function PATCH(
         return NextResponse.json({ success: false, error: message }, { status });
     }
 }
+
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ tipo: string; id: string }> }
+) {
+    try {
+        const { tipo, id } = await params;
+        
+        await CatalogosService.remove(tipo, id);
+        return NextResponse.json({ success: true }, { status: 200 });
+    } catch (error) {
+        console.error(`DELETE /api/catalogos/[tipo]/[id] error:`, error);
+        const message = error instanceof Error ? error.message : 'Error interno del servidor';
+        const status = message.includes('en uso') ? 409 : 500;
+        return NextResponse.json({ success: false, error: message }, { status });
+    }
+}

@@ -25,6 +25,12 @@ export class CotizacionesService {
         return await CotizacionesRepository.fijarPrecio(cotizacionId, dto);
     }
 
+    // admin rechaza directamente una cotizacion
+    static async rechazarPorAdmin(cotizacionId: string, request: Request) {
+        await getAuthUser(request);
+        return await CotizacionesRepository.rechazarPorAdmin(cotizacionId);
+    }
+
     // cliente acepta o rechaza
     static async responderCotizacion(cotizacionId: string, dto: ResponderCotizacionDTO, request: Request) {
         const user = await getAuthUser(request);

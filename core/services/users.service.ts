@@ -13,7 +13,11 @@ export class UsersService {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error || !data.user || !data.session) {
-            throw new Error('Credenciales inválidas. Verifica tu correo y contraseña.');
+            const errorMsg = error?.message || 'Error desconocido';
+            if (errorMsg.toLowerCase().includes('email not confirmed')) {
+                throw new Error('Debes confirmar tu correo electrónico antes de iniciar sesión.');
+            }
+            throw new Error(`Credenciales inválidas: ${errorMsg}`);
         }
 
         // verificar que el usuario este activo antes de continuar
@@ -83,6 +87,13 @@ export class UsersService {
     // baja logica de un usuario
     static async bajaLogica(userId: string, request: Request) {
         await getAuthUser(request);
+        
+        // Verificar si es un contador con clientes asignados
+        const clientesAsignados = await UserRepository.countClientesDeContador(userId);
+        if (clientesAsignados > 0) {
+            throw new Error(`No es posible inactivar este contador ya que tiene ${clientesAsignados} cliente(s) asignado(s). Reasígnalos primero.`);
+        }
+        
         return await UserRepository.softDelete(userId);
     }
 

@@ -53,9 +53,9 @@ export default function Login() {
             if (!res.ok) {
                 setStatus("error");
                 if (res.status === 401) {
-                    setApiError("Correo o contraseña incorrectos.");
+                    setApiError(data.error || "Correo o contraseña incorrectos.");
                 } else if (res.status === 403) {
-                    setApiError("Tu cuenta ha sido desactivada. Contacta soporte.");
+                    setApiError(data.error || "Tu cuenta ha sido desactivada. Contacta soporte.");
                 } else {
                     setApiError(data.error ?? "Ocurrió un error al iniciar sesión.");
                 }

@@ -22,6 +22,7 @@ export async function PUT(
         const data = await UsersService.asignarContador(id, parsed.data, request);
         return NextResponse.json({ success: true, data }, { status: 200 });
     } catch (error) {
+        console.error("PUT /api/users/[id]/asignar-contador error:", error);
         const message = error instanceof Error ? error.message : 'Error interno del servidor';
         return NextResponse.json({ success: false, error: message }, { status: 500 });
     }

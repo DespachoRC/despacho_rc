@@ -19,6 +19,7 @@ export default function UsersManagement() {
     const [clientes, setClientes] = useState<any[]>([]);
     const [contadores, setContadores] = useState<any[]>([]);
     const [roles, setRoles] = useState<{id: string, nombre: string}[]>([]);
+    const [regimenes, setRegimenes] = useState<{id: string, nombre: string}[]>([]);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -33,16 +34,13 @@ export default function UsersManagement() {
     const fetchUsers = async () => {
         setIsLoading(true);
         try {
-            const resClientes = await fetch("/api/users");
-            const resContadores = await fetch("/api/users/contadores");
+            const res = await fetch("/api/users");
             
-            if (resClientes.ok) {
-                const json = await resClientes.json();
-                setClientes(json.data || []);
-            }
-            if (resContadores.ok) {
-                const json = await resContadores.json();
-                setContadores(json.data || []);
+            if (res.ok) {
+                const json = await res.json();
+                const allUsers = json.data || [];
+                setClientes(allUsers.filter((u: any) => u.roles?.nombre === 'cliente'));
+                setContadores(allUsers.filter((u: any) => u.roles?.nombre === 'contador'));
             }
         } catch (error) {
             console.error("Error fetching users", error);
@@ -64,9 +62,22 @@ export default function UsersManagement() {
         }
     };
 
+    const fetchRegimenes = async () => {
+        try {
+            const res = await fetch("/api/catalogos/regimenes_fiscales");
+            if (res.ok) {
+                const json = await res.json();
+                setRegimenes(json.data || []);
+            }
+        } catch (error) {
+            console.error("Error fetching regimenes", error);
+        }
+    };
+
     useEffect(() => {
         fetchUsers();
         fetchRoles();
+        fetchRegimenes();
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -132,9 +143,9 @@ export default function UsersManagement() {
         }
     };
 
-    const handleToggleStatus = async (id: string, currentStatusId: number) => {
+    const handleToggleStatus = async (id: string, estatusNombre: string) => {
         try {
-            const isActivo = currentStatusId === 1;
+            const isActivo = estatusNombre === "activo";
             const url = isActivo ? `/api/users/${id}` : `/api/users/${id}/reactivar`;
             const method = isActivo ? 'DELETE' : 'PUT';
 
@@ -149,6 +160,25 @@ export default function UsersManagement() {
             }
         } catch (error) {
             toast.error('Error de red al intentar actualizar el estatus');
+        }
+    };
+
+    const handleAssignContador = async (clienteId: string, contadorId: string) => {
+        try {
+            const res = await fetch(`/api/users/${clienteId}/asignar-contador`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contador_id: contadorId })
+            });
+            const json = await res.json();
+            if (res.ok && json.success) {
+                toast.success("Contador asignado exitosamente");
+                fetchUsers();
+            } else {
+                toast.error(json.error || "Error al asignar contador");
+            }
+        } catch (error) {
+            toast.error("Error de red al intentar asignar contador");
         }
     };
 
@@ -172,19 +202,38 @@ export default function UsersManagement() {
             cell: (item) => <span className="text-slate-600 text-sm">{item.rfc}</span>
         },
         {
+            header: "Contador Asignado",
+            cell: (item) => (
+                <select
+                    className="bg-slate-50 border border-slate-200 text-sm text-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy-500"
+                    value={item.contador_id || ""}
+                    onChange={(e) => {
+                        if(e.target.value) handleAssignContador(item.id, e.target.value);
+                    }}
+                >
+                    <option value="">Sin Asignar</option>
+                    {contadores.map(c => (
+                        <option key={c.id} value={c.id}>
+                            {c.nombre} {c.apellido_paterno}
+                        </option>
+                    ))}
+                </select>
+            )
+        },
+        {
             header: "Estatus",
             cell: (item) => <Badge text={item.estatus_usuarios?.nombre === "activo" ? "Activo" : "Inactivo"} variant={item.estatus_usuarios?.nombre === "activo" ? "success" : "ghost"} />
         },
         {
             header: "Acción",
             cell: (item) => {
-                const isActivo = item.estatus_id === 1;
+                const isActivo = item.estatus_usuarios?.nombre === "activo";
                 return (
                     <Button 
                         text={isActivo ? "Inactivar" : "Activar"} 
                         variant={isActivo ? "destructive" : "outline"} 
                         className="px-3 py-1.5 text-xs"
-                        onClick={() => handleToggleStatus(item.id, item.estatus_id)}
+                        onClick={() => handleToggleStatus(item.id, item.estatus_usuarios?.nombre)}
                     />
                 );
             }
@@ -212,13 +261,13 @@ export default function UsersManagement() {
         {
             header: "Acción",
             cell: (item) => {
-                const isActivo = item.estatus_id === 1;
+                const isActivo = item.estatus_usuarios?.nombre === "activo";
                 return (
                     <Button 
                         text={isActivo ? "Inactivar" : "Activar"} 
                         variant={isActivo ? "destructive" : "outline"} 
                         className="px-3 py-1.5 text-xs"
-                        onClick={() => handleToggleStatus(item.id, item.estatus_id)}
+                        onClick={() => handleToggleStatus(item.id, item.estatus_usuarios?.nombre)}
                     />
                 );
             }
@@ -324,12 +373,9 @@ export default function UsersManagement() {
                                         className="w-full bg-navy-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-navy-700 focus:border-navy-700 transition-all text-base cursor-pointer"
                                     >
                                         <option value="">Selecciona un régimen...</option>
-                                        {/* TODO: Aquí idealmente se debería hacer fetch a los regimenes desde api/catalogos */}
-                                        <option value="fake-uuid-1">RESICO - Personas Físicas</option>
-                                        <option value="fake-uuid-2">Régimen General de Ley</option>
-                                        <option value="fake-uuid-3">Persona Moral</option>
-                                        <option value="fake-uuid-4">Régimen de Arrendamiento</option>
-                                        <option value="fake-uuid-5">Actividades Empresariales</option>
+                                        {regimenes.map(r => (
+                                            <option key={r.id} value={r.id}>{r.nombre}</option>
+                                        ))}
                                     </select>
                                 </div>
                             )}

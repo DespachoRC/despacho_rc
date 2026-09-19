@@ -41,12 +41,15 @@ export class CotizacionesRepository {
             ? `${dto.descripcion || ''}\n\nNota del cliente: ${dto.notas_cliente}`.trim()
             : (dto.descripcion ?? null);
 
+        // actividad_catalogo_id referencia lista_actividades, no catalogo_actividades.
+        // Para evitar errores de FK y mantener la lógica simple, se deja null.
+        // El título ya contiene el nombre de la actividad solicitada.
         const { data, error } = await supabase
             .from('cotizaciones')
             .insert({
                 titulo: dto.titulo,
                 descripcion: descripcionFinal,
-                actividad_catalogo_id: dto.actividad_catalogo_id,
+                actividad_catalogo_id: null,
                 cliente_id: clienteId,
                 organizacion_id: organizacionId,
                 estatus_id: estatusId,
@@ -167,13 +170,29 @@ export class CotizacionesRepository {
         const { data, error } = await supabase
             .from('cotizaciones')
             .select(`
-                id, titulo, descripcion, precio, notas_cliente, fecha_creacion,
-                estatus_cotizacion(nombre),
-                lista_actividades(catalogo_actividades(nombre))
+                id, titulo, descripcion, precio, fecha_creacion,
+                estatus_cotizacion(nombre)
             `)
             .eq('cliente_id', clienteId)
             .order('fecha_creacion', { ascending: false });
 
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
+    // admin rechaza directamente una cotizacion (sin enviarla al cliente)
+    static async rechazarPorAdmin(cotizacionId: string) {
+        const supabase = await createClient();
+        const estatusId = await this.getEstatusId('rechazada');
+
+        const { data, error } = await supabase
+            .from('cotizaciones')
+            .update({ estatus_id: estatusId })
+            .eq('id', cotizacionId)
+            .select()
+            .single();
+
+        if (error?.code === 'PGRST116') throw new Error('Cotización no encontrada');
         if (error) throw new Error(error.message);
         return data;
     }

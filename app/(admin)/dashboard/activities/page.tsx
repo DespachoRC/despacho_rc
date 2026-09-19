@@ -1,75 +1,90 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { DataTable, ColumnDef } from "@/app/components/ui/DataTable";
 import { Badge } from "@/app/components/ui/Badge";
-import { Button } from "@/app/components/ui/Button";
+import toast from "react-hot-toast";
 
-interface ActividadMock {
+interface Actividad {
     id: string;
     titulo: string;
-    estatus: "pendiente" | "en_proceso" | "bloqueada" | "completada";
-    cliente_nombre: string;
-    contador_nombre: string;
     fecha_creacion: string;
+    estatus_actividad: { nombre: string } | null;
+    usuarios: { nombre: string; apellido_paterno: string } | null;
+    contador: { nombre: string; apellido_paterno: string } | null;
 }
 
 export default function ActivitiesPage() {
-    const [search, setSearch] = useState("");
-    const [isLoading] = useState(true);
+    const [actividades, setActividades] = useState<Actividad[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const columns: ColumnDef<ActividadMock>[] = [
+    useEffect(() => {
+        const fetchActividades = async () => {
+            setIsLoading(true);
+            try {
+                const res = await fetch("/api/admin/actividades");
+                if (res.ok) {
+                    const json = await res.json();
+                    setActividades(json.data || []);
+                } else {
+                    toast.error("Error al cargar las actividades");
+                }
+            } catch {
+                toast.error("Error de conexión");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchActividades();
+    }, []);
+
+    const columns: ColumnDef<Actividad>[] = [
         {
             header: "Actividad",
             cell: (item) => (
                 <div>
                     <p className="font-semibold text-navy-950">{item.titulo}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Creada: {item.fecha_creacion}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                        {new Date(item.fecha_creacion).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
                 </div>
             )
         },
         {
             header: "Cliente",
             cell: (item) => (
-                <span className="text-sm text-slate-700">{item.cliente_nombre}</span>
+                <span className="text-sm text-slate-700">
+                    {item.usuarios ? `${item.usuarios.nombre} ${item.usuarios.apellido_paterno}` : "—"}
+                </span>
             )
         },
         {
             header: "Contador Asignado",
             cell: (item) => (
-                <span className="text-sm text-slate-700">{item.contador_nombre}</span>
+                <span className="text-sm text-slate-700">
+                    {item.contador ? `${item.contador.nombre} ${item.contador.apellido_paterno}` : "—"}
+                </span>
             )
         },
         {
             header: "Estatus",
             cell: (item) => {
-                const variantMap: Record<string, "pending" | "navy" | "danger" | "success"> = {
+                const estatus = item.estatus_actividad?.nombre ?? "desconocido";
+                const variantMap: Record<string, "pending" | "navy" | "danger" | "success" | "ghost"> = {
                     pendiente: "pending",
                     en_proceso: "navy",
                     bloqueada: "danger",
-                    completada: "success"
+                    completada: "success",
                 };
-                
                 const labelMap: Record<string, string> = {
                     pendiente: "Pendiente",
                     en_proceso: "En Proceso",
                     bloqueada: "Bloqueada",
-                    completada: "Completada"
+                    completada: "Completada",
                 };
-
-                return <Badge text={labelMap[item.estatus]} variant={variantMap[item.estatus]} />;
+                return <Badge text={labelMap[estatus] ?? estatus} variant={variantMap[estatus] ?? "ghost"} />;
             }
-        },
-        {
-            header: "Acciones",
-            cell: () => (
-                <Button 
-                    text="Ver Detalles" 
-                    variant="ghost" 
-                    className="px-3 py-1.5 text-xs" 
-                />
-            )
         }
     ];
 
@@ -82,14 +97,15 @@ export default function ActivitiesPage() {
 
             <div className="flex flex-col gap-4">
                 <DataTable 
-                    data={[]}
+                    data={actividades}
                     isLoading={isLoading}
                     columns={columns}
                     keyExtractor={(item) => item.id}
                     searchPlaceholder="Buscar por actividad o cliente..."
-                    onSearch={(val) => setSearch(val)}
                 />
             </div>
         </div>
     );
 }
+
+

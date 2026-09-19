@@ -51,13 +51,7 @@ export default function ClientsPage() {
                 subtitle="Vista general de los clientes de tu cartera"
             />
 
-            {/* Los KPIs se mantienen en Skeleton porque no hay endpoint de métricas aún */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <KpiCardSkeleton />
-                <KpiCardSkeleton />
-                <KpiCardSkeleton />
-                <KpiCardSkeleton />
-            </div>
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {isLoading ? (

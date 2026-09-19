@@ -69,4 +69,24 @@ export class CatalogosService {
         if (error) throw new Error(error.message);
         return data;
     }
+
+    // elimina fisicamente un registro, si no esta referenciado por otras tablas
+    static async remove(tabla: string, id: string) {
+        const supabase = await createClient();
+        const tablaValida = this.validarTabla(tabla);
+
+        const { error } = await supabase
+            .from(tablaValida)
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            // error 23503 = foreign_key_violation en Postgres
+            if (error.code === '23503') {
+                throw new Error('No se puede eliminar porque este elemento ya está en uso por otros registros.');
+            }
+            throw new Error(error.message);
+        }
+        return true;
+    }
 }

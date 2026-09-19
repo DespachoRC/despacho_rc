@@ -36,6 +36,7 @@ export async function POST(
         const data = await CatalogosService.create(tipo, body.nombre);
         return NextResponse.json({ success: true, data }, { status: 201 });
     } catch (error) {
+        console.error("POST /api/catalogos/[tipo] error:", error);
         const message = error instanceof Error ? error.message : 'Error interno del servidor';
         const status = message.includes('invalido') ? 400 : 500;
         return NextResponse.json({ success: false, error: message }, { status });

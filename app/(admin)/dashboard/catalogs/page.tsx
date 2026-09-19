@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LuPlus, LuFileText, LuBriefcase, LuFolderOpen, LuLoader } from "react-icons/lu";
+import { LuPlus, LuFileText, LuBriefcase, LuFolderOpen, LuLoader, LuTrash2 } from "react-icons/lu";
+import toast from "react-hot-toast";
 import { Input } from "@/app/components/ui/Input";
 import { Button } from "@/app/components/ui/Button";
 import { PageHeader } from "@/app/components/ui/PageHeader";
@@ -27,6 +28,8 @@ function CatalogoCard({ seccion }: { seccion: CatalogoSection }) {
     const [loading, setLoading]   = useState(true);
     const [nuevoNombre, setNuevo] = useState("");
     const [adding, setAdding]     = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [confirmId, setConfirmId] = useState<string | null>(null);
 
     const fetchItems = async () => {
         setLoading(true);
@@ -66,9 +69,35 @@ function CatalogoCard({ seccion }: { seccion: CatalogoSection }) {
             if (json.success) {
                 setItems((prev) => [...prev, json.data]);
                 setNuevo("");
+                toast.success("Añadido correctamente");
+            } else {
+                toast.error(json.error || "Error al añadir");
             }
         } finally {
             setAdding(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (confirmId !== id) {
+            setConfirmId(id);
+            setTimeout(() => setConfirmId(null), 3000);
+            return;
+        }
+
+        setDeletingId(id);
+        try {
+            const res = await fetch(`/api/catalogos/${seccion.tabla}/${id}`, { method: "DELETE" });
+            const json = await res.json();
+            if (json.success) {
+                setItems((prev) => prev.filter((i) => i.id !== id));
+                toast.success("Eliminado correctamente");
+            } else {
+                toast.error(json.error || "No se pudo eliminar");
+            }
+        } finally {
+            setDeletingId(null);
+            setConfirmId(null);
         }
     };
 
@@ -93,6 +122,7 @@ function CatalogoCard({ seccion }: { seccion: CatalogoSection }) {
                     />
                 </div>
                 <Button
+                    type="submit"
                     icon={<LuPlus className="w-4 h-4" />}
                     className="px-3 py-2.5 shrink-0"
                     isLoading={adding}
@@ -124,6 +154,24 @@ function CatalogoCard({ seccion }: { seccion: CatalogoSection }) {
                                 onCheckedChange={(checked) => handleToggle(item, checked)}
                                 aria-label={`Activar o desactivar ${item.nombre}`}
                             />
+                            <button
+                                type="button"
+                                onClick={() => handleDelete(item.id)}
+                                disabled={deletingId === item.id}
+                                className={`p-2 rounded-lg text-xs font-medium transition-colors ${
+                                    confirmId === item.id 
+                                        ? "bg-red-100 text-red-600 hover:bg-red-200" 
+                                        : "text-slate-400 hover:text-red-500 hover:bg-slate-100"
+                                }`}
+                            >
+                                {deletingId === item.id ? (
+                                    <LuLoader className="w-4 h-4 animate-spin" />
+                                ) : confirmId === item.id ? (
+                                    "¿Confirmar?"
+                                ) : (
+                                    <LuTrash2 className="w-4 h-4" />
+                                )}
+                            </button>
                         </li>
                     ))}
                 </ul>

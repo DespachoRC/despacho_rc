@@ -95,7 +95,7 @@ export class UserRepository {
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('usuarios')
-            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, rol_id, contador_id, estatus_id, fecha_creacion, estatus_usuarios(nombre)')
+            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, rol_id, contador_id, estatus_id, fecha_creacion, estatus_usuarios(nombre), roles(nombre)')
             .eq('organizacion_id', organizacionId)
             .order('fecha_creacion', { ascending: false });
 
@@ -130,9 +130,10 @@ export class UserRepository {
 
         const { data, error } = await supabase
             .from('usuarios')
-            .select('id, nombre, apellido_paterno, apellido_materno, email')
+            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, rol_id, contador_id, estatus_id, fecha_creacion, estatus_usuarios(nombre)')
             .eq('organizacion_id', organizacionId)
-            .eq('rol_id', rolData.id);
+            .eq('rol_id', rolData.id)
+            .order('fecha_creacion', { ascending: false });
 
         if (error) throw new Error(error.message);
         return data;
@@ -245,6 +246,18 @@ export class UserRepository {
 
         if (error) throw new Error(error.message);
         return data;
+    }
+
+    // Contar clientes asignados a un contador
+    public static async countClientesDeContador(contadorId: string) {
+        const supabase = await createClient();
+        const { count, error } = await supabase
+            .from('usuarios')
+            .select('id', { count: 'exact', head: true })
+            .eq('contador_id', contadorId);
+            
+        if (error) throw new Error(error.message);
+        return count || 0;
     }
 
 }

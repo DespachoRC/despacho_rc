@@ -5,28 +5,53 @@ import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Button } from "@/app/components/ui/Button";
 import { useState, useEffect } from "react";
 import { LuCheck, LuX } from "react-icons/lu";
+import toast from "react-hot-toast";
 
 export default function BudgetsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [presupuestos, setPresupuestos] = useState<any[]>([]);
+    const [procesando, setProcesando] = useState<Record<string, boolean>>({});
+
+    const fetchPresupuestos = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch("/api/cotizaciones/mis-cotizaciones");
+            if (res.ok) {
+                const json = await res.json();
+                setPresupuestos(json.data || []);
+            }
+        } catch (error) {
+            console.error("Error fetching presupuestos", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchPresupuestos = async () => {
-            setIsLoading(true);
-            try {
-                const res = await fetch("/api/cotizaciones/mis-cotizaciones");
-                if (res.ok) {
-                    const json = await res.json();
-                    setPresupuestos(json.data || []);
-                }
-            } catch (error) {
-                console.error("Error fetching presupuestos", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
         fetchPresupuestos();
     }, []);
+
+    const handleResponder = async (cotizacionId: string, respuesta: "aceptada" | "rechazada") => {
+        setProcesando(prev => ({ ...prev, [cotizacionId]: true }));
+        try {
+            const res = await fetch(`/api/cotizaciones/${cotizacionId}/respuesta`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ respuesta }),
+            });
+            const json = await res.json();
+            if (res.ok && json.success) {
+                toast.success(respuesta === "aceptada" ? "Cotización aceptada" : "Cotización rechazada");
+                fetchPresupuestos();
+            } else {
+                toast.error(json.error || "No se pudo procesar la respuesta");
+            }
+        } catch {
+            toast.error("Error de conexión");
+        } finally {
+            setProcesando(prev => ({ ...prev, [cotizacionId]: false }));
+        }
+    };
 
     const getVariant = (estatus: string) => {
         switch (estatus.toLowerCase()) {
@@ -53,13 +78,14 @@ export default function BudgetsPage() {
                         <ExpandableCardSkeleton />
                     </>
                 ) : presupuestos.length > 0 ? (
-                    presupuestos.map((presupuesto, idx) => {
+                    presupuestos.map((presupuesto) => {
                         const estatusNombre = presupuesto.estatus_cotizacion?.nombre || 'Desconocido';
+                        const esPendiente = estatusNombre.toLowerCase() === 'pendiente';
                         
                         return (
                             <ExpandableCard
-                                key={idx}
-                                cliente="Tu Cotización" // No renderizamos el nombre del cliente porque el cliente se ve a sí mismo
+                                key={presupuesto.id}
+                                cliente="Tu Cotización"
                                 estatusText={estatusNombre.toUpperCase()}
                                 estatusVariant={getVariant(estatusNombre)}
                                 subtitulo={presupuesto.titulo || "Solicitud"}
@@ -73,18 +99,22 @@ export default function BudgetsPage() {
                                                 {presupuesto.descripcion || presupuesto.notas_cliente || "No hay detalles adicionales."}
                                             </p>
                                         </div>
-                                        {estatusNombre.toLowerCase() === 'pendiente' && presupuesto.precio && (
+                                        {esPendiente && presupuesto.precio && (
                                             <div className="flex items-center gap-3 mt-4">
                                                 <Button
                                                     text="Aceptar Cotización"
                                                     icon={<LuCheck />}
                                                     className="px-6 py-3"
+                                                    disabled={procesando[presupuesto.id]}
+                                                    onClick={() => handleResponder(presupuesto.id, "aceptada")}
                                                 />
                                                 <Button
                                                     text="Rechazar"
                                                     variant="destructive"
                                                     icon={<LuX />}
                                                     className="px-6 py-3"
+                                                    disabled={procesando[presupuesto.id]}
+                                                    onClick={() => handleResponder(presupuesto.id, "rechazada")}
                                                 />
                                             </div>
                                         )}
@@ -102,3 +132,6 @@ export default function BudgetsPage() {
         </div>
     );
 }
+
+
+

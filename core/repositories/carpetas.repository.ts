@@ -31,33 +31,42 @@ export class CarpetasRepository {
 
         if (errDocs) throw new Error(errDocs.message);
 
+        // 4. Obtener catálogo de categorías de documentos
+        const { data: catDocs, error: errCats } = await supabase
+            .from('categoria_documentos')
+            .select('nombre')
+            .eq('activo', true)
+            .order('nombre');
+
+        if (errCats) throw new Error(errCats.message);
+        const catNames = catDocs.map(c => c.nombre);
+
         // Armar la estructura
         const result = contadores.map(contador => {
             const clientesAsignados = clientes.filter(c => c.contador_id === contador.id).map(cliente => {
                 const docsCliente = documentos.filter(d => d.cliente_id === cliente.id);
-                
-                // Agrupar documentos por categoría simplificada
-                const categories = {
-                    tickets: [] as any[],
-                    afiliacion: [] as any[],
-                    facturas: [] as any[],
-                    general: [] as any[]
-                };
+                // Agrupar documentos por categoría dinámica
+                const categories = catNames.map(cat => ({
+                    nombre: cat,
+                    archivos: [] as any[]
+                }));
+                const generalCat = { nombre: 'General', archivos: [] as any[] };
 
                 docsCliente.forEach(doc => {
-                    const catNombre = ((doc.categoria_documentos as any)?.nombre || '').toLowerCase();
+                    const docCatName = (doc.categoria_documentos as any)?.nombre;
                     const docItem = { nombre: doc.nombre_archivo, url: doc.ruta_archivo };
                     
-                    if (catNombre.includes('ticket')) {
-                        categories.tickets.push(docItem);
-                    } else if (catNombre.includes('afiliacion') || catNombre.includes('afiliación')) {
-                        categories.afiliacion.push(docItem);
-                    } else if (catNombre.includes('factura')) {
-                        categories.facturas.push(docItem);
+                    const catTarget = categories.find(c => c.nombre === docCatName);
+                    if (catTarget) {
+                        catTarget.archivos.push(docItem);
                     } else {
-                        categories.general.push(docItem);
+                        generalCat.archivos.push(docItem);
                     }
                 });
+
+                if (generalCat.archivos.length > 0 || categories.length === 0) {
+                    categories.push(generalCat);
+                }
 
                 return {
                     id: cliente.id,
@@ -78,16 +87,20 @@ export class CarpetasRepository {
         // Agregar también a los clientes que no tienen contador asignado (opcional pero útil para el admin)
         const clientesSinContador = clientes.filter(c => !c.contador_id).map(cliente => {
             const docsCliente = documentos.filter(d => d.cliente_id === cliente.id);
-            const categories = { tickets: [] as any[], afiliacion: [] as any[], facturas: [] as any[], general: [] as any[] };
+            const categories = catNames.map(cat => ({ nombre: cat, archivos: [] as any[] }));
+            const generalCat = { nombre: 'General', archivos: [] as any[] };
             
             docsCliente.forEach(doc => {
-                const catNombre = ((doc.categoria_documentos as any)?.nombre || '').toLowerCase();
+                const docCatName = (doc.categoria_documentos as any)?.nombre;
                 const docItem = { nombre: doc.nombre_archivo, url: doc.ruta_archivo };
-                if (catNombre.includes('ticket')) categories.tickets.push(docItem);
-                else if (catNombre.includes('afiliacion') || catNombre.includes('afiliación')) categories.afiliacion.push(docItem);
-                else if (catNombre.includes('factura')) categories.facturas.push(docItem);
-                else categories.general.push(docItem);
+                const catTarget = categories.find(c => c.nombre === docCatName);
+                if (catTarget) catTarget.archivos.push(docItem);
+                else generalCat.archivos.push(docItem);
             });
+
+            if (generalCat.archivos.length > 0 || categories.length === 0) {
+                categories.push(generalCat);
+            }
 
             return {
                 id: cliente.id,

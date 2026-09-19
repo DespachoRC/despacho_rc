@@ -26,7 +26,9 @@ export async function DELETE(
         const data = await UsersService.bajaLogica(id, request);
         return NextResponse.json({ success: true, data }, { status: 200 });
     } catch (error) {
+        console.error("DELETE /api/users/[id] error:", error);
         const message = error instanceof Error ? error.message : 'Error interno del servidor';
-        return NextResponse.json({ success: false, error: message }, { status: 500 });
+        const status = message.includes('Reasígnalos primero') ? 409 : 500;
+        return NextResponse.json({ success: false, error: message }, { status });
     }
 }
