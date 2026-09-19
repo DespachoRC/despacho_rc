@@ -92,4 +92,16 @@ export class UsersService {
         return await UserRepository.asignarContador(clienteId, dto.contador_id);
     }
 
+    // obtener el perfil del usuario autenticado
+    static async getPerfil(request: Request) {
+        const user = await getAuthUser(request);
+        return await UserRepository.getPerfil(user.id);
+    }
+
+    // reactivar un usuario inactivo
+    static async reactivar(userId: string, request: Request) {
+        await getAuthUser(request);
+        return await UserRepository.reactivar(userId);
+    }
+
 }

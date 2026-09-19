@@ -31,4 +31,10 @@ export class CotizacionesService {
         return await CotizacionesRepository.responder(cotizacionId, dto.respuesta, user.id);
     }
 
+    // cliente consulta el historial de sus propias cotizaciones
+    static async getMisCotizaciones(request: Request) {
+        const user = await getAuthUser(request);
+        return await CotizacionesRepository.findByCliente(user.id);
+    }
+
 }

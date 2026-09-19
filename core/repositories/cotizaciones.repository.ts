@@ -90,4 +90,22 @@ export class CotizacionesRepository {
         return data;
     }
 
+    // cliente consulta el historial de sus propias cotizaciones
+    static async findByCliente(clienteId: string) {
+        const supabase = await createClient();
+
+        const { data, error } = await supabase
+            .from('cotizaciones')
+            .select(`
+                id, titulo, descripcion, precio, notas_cliente, fecha_creacion,
+                estatus_cotizacion(nombre),
+                lista_actividades(catalogo_actividades(nombre))
+            `)
+            .eq('cliente_id', clienteId)
+            .order('fecha_creacion', { ascending: false });
+
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
 }

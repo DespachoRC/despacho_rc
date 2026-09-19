@@ -177,4 +177,49 @@ export class UserRepository {
         return data;
     }
 
+    // obtener el perfil completo del usuario autenticado
+    public static async getPerfil(userId: string) {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('usuarios')
+            .select(`
+                id, nombre, apellido_paterno, apellido_materno,
+                email, rfc, especialidad_contador, fecha_creacion,
+                roles(nombre),
+                estatus_usuarios(nombre),
+                organizaciones(nombre),
+                regimenes_fiscales(nombre)
+            `)
+            .eq('id', userId)
+            .single();
+
+        if (error?.code === 'PGRST116') throw new Error('Perfil no encontrado');
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
+    // reactivar usuario — cambia estatus a activo
+    public static async reactivar(userId: string) {
+        const supabase = await createClient();
+
+        const { data: estatusData, error: estatusError } = await supabase
+            .from('estatus_usuarios')
+            .select('id')
+            .eq('nombre', 'activo')
+            .single();
+
+        if (estatusError || !estatusData) throw new Error('Estatus activo no encontrado');
+
+        const { data, error } = await supabase
+            .from('usuarios')
+            .update({ estatus_id: estatusData.id })
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error?.code === 'PGRST116') throw new Error('Usuario no encontrado');
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
 }
