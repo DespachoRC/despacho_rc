@@ -55,18 +55,44 @@ export class CotizacionesRepository {
         return data;
     }
 
-    // admin fija el precio — estatus se mantiene en pendiente hasta que el cliente responda
+    // admin fija el precio — verifica el estatus antes de actualizar
+    // si la cotizacion estaba rechazada, la regresa a pendiente automaticamente
     static async fijarPrecio(cotizacionId: string, dto: FijarPrecioDTO) {
         const supabase = await createClient();
 
+        // obtener cotizacion y su estatus actual
+        const { data: cotizacion, error: fetchError } = await supabase
+            .from('cotizaciones')
+            .select('id, estatus_id, estatus_cotizacion(nombre)')
+            .eq('id', cotizacionId)
+            .single();
+
+        if (fetchError?.code === 'PGRST116') throw new Error('Cotización no encontrada');
+        if (fetchError) throw new Error(fetchError.message);
+
+        const estatusActual = (cotizacion?.estatus_cotizacion as unknown as { nombre: string } | null)?.nombre;
+
+        if (estatusActual === 'aceptada') {
+            throw new Error('No se puede modificar el precio de una cotización ya aceptada');
+        }
+        if (estatusActual === 'cancelada') {
+            throw new Error('No se puede modificar el precio de una cotización cancelada');
+        }
+
+        // si estaba rechazada, se regresa a pendiente al fijar nuevo precio
+        const updatePayload: Record<string, unknown> = { precio: dto.precio };
+        if (estatusActual === 'rechazada') {
+            const pendienteId = await this.getEstatusId('pendiente');
+            updatePayload.estatus_id = pendienteId;
+        }
+
         const { data, error } = await supabase
             .from('cotizaciones')
-            .update({ precio: dto.precio })
+            .update(updatePayload)
             .eq('id', cotizacionId)
             .select()
             .single();
 
-        if (error?.code === 'PGRST116') throw new Error('Cotización no encontrada');
         if (error) throw new Error(error.message);
         return data;
     }
