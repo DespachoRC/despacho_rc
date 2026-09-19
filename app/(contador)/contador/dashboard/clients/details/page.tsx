@@ -159,6 +159,21 @@ function ClientDetailsContent() {
         }
     };
 
+    const handleDownload = async (docId: string) => {
+        try {
+            const res = await fetch(`/api/documentos/${docId}/url-firmada`);
+            const json = await res.json();
+            if (json.success && json.data) {
+                window.open(json.data, "_blank");
+            } else {
+                alert(json.error || "No se pudo descargar el archivo");
+            }
+        } catch (error) {
+            console.error("Download error:", error);
+            alert("Error al descargar el archivo");
+        }
+    };
+
     const tabs = [
         { id: "actividades", label: "Bandeja de Actividades", icon: LuInbox },
         { id: "chat", label: "Chat Operativo", icon: LuMessageSquare },
@@ -252,7 +267,7 @@ function ClientDetailsContent() {
 
                                     <div className="space-y-2 pt-1">
                                         {act.documentos && act.documentos.map((doc: any) => (
-                                            <FileAttachment key={doc.id} nombreArchivo={doc.nombre_archivo} />
+                                            <FileAttachment key={doc.id} nombreArchivo={doc.nombre_archivo} onDownload={() => handleDownload(doc.id)} />
                                         ))}
                                         {(!act.documentos || act.documentos.length === 0) && (
                                             <span className="text-xs text-slate-400 italic">Sin documentos adjuntos</span>
@@ -404,7 +419,7 @@ function ClientDetailsContent() {
                                         </div>
                                         <div className="space-y-2">
                                             {filesInCat.map(file => (
-                                                <FileAttachment key={file.id} nombreArchivo={file.nombre_archivo} />
+                                                <FileAttachment key={file.id} nombreArchivo={file.nombre_archivo} onDownload={() => handleDownload(file.id)} />
                                             ))}
                                         </div>
                                     </div>

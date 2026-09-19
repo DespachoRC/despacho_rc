@@ -54,7 +54,7 @@ export class CarpetasRepository {
 
                 docsCliente.forEach(doc => {
                     const docCatName = (doc.categoria_documentos as any)?.nombre;
-                    const docItem = { nombre: doc.nombre_archivo, url: doc.ruta_archivo };
+                    const docItem = { id: doc.id, nombre: doc.nombre_archivo, url: doc.ruta_archivo };
                     
                     const catTarget = categories.find(c => c.nombre === docCatName);
                     if (catTarget) {
@@ -92,7 +92,7 @@ export class CarpetasRepository {
             
             docsCliente.forEach(doc => {
                 const docCatName = (doc.categoria_documentos as any)?.nombre;
-                const docItem = { nombre: doc.nombre_archivo, url: doc.ruta_archivo };
+                const docItem = { id: doc.id, nombre: doc.nombre_archivo, url: doc.ruta_archivo };
                 const catTarget = categories.find(c => c.nombre === docCatName);
                 if (catTarget) catTarget.archivos.push(docItem);
                 else generalCat.archivos.push(docItem);

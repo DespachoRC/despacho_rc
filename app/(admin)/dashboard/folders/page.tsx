@@ -30,17 +30,18 @@ export default function Folders() {
         fetchFolders();
     }, []);
 
-    const handleDownload = async (fileUrl: string, fileName: string) => {
+    const handleDownload = async (fileId: string, fileName: string) => {
+        if (!fileId) {
+            toast.error('No se pudo encontrar el archivo');
+            return;
+        }
         try {
-            // El backend usa un ID de documento para generar la URL, 
-            // pero si la URL ya es pública (o se almacena directamente), podríamos descargarla.
-            // Asumiremos que el href puede descargarla si apuntara directo a supabase, 
-            // pero lo ideal es pasar por api/documentos/[id]/url-firmada si tuvieramos el ID del documento.
-            // Para simplificar, abrimos una nueva pestaña con la URL si está disponible.
-            if (fileUrl) {
-                window.open(fileUrl, '_blank');
+            const res = await fetch(`/api/documentos/${fileId}/url-firmada`);
+            const json = await res.json();
+            if (json.success && json.data) {
+                window.open(json.data, '_blank');
             } else {
-                toast.error('No se pudo encontrar el enlace al archivo');
+                toast.error(json.error || 'No se pudo descargar el archivo');
             }
         } catch (error) {
             toast.error('Error al intentar descargar el archivo');
@@ -99,7 +100,7 @@ export default function Folders() {
                                                         </div>
                                                         <button 
                                                             className="shrink-0 w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-navy-600 group-hover:border-navy-200 transition-colors"
-                                                            onClick={() => handleDownload(file?.url, nombreArchivo)}
+                                                            onClick={() => handleDownload(file?.id, nombreArchivo)}
                                                             title="Descargar archivo"
                                                         >
                                                             <LuDownload className="w-4 h-4" />
