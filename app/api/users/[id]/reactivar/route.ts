@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { UsersService } from '@/core/services/users.service';
 
-// get: cualquier usuario autenticado consulta su propio perfil completo
-export async function GET(request: Request) {
+// put: admin reactiva un usuario que habia sido dado de baja
+export async function PUT(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
     try {
-        const data = await UsersService.getPerfil(request);
+        const { id } = await params;
+        const data = await UsersService.reactivar(id, request);
         return NextResponse.json({ success: true, data }, { status: 200 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error interno del servidor';

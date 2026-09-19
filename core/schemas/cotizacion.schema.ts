@@ -8,11 +8,11 @@ export const CreateCotizacionSchema = z.object({
     notas_cliente: z.string().max(500).optional(),
 });
 
-// paso 2: admin fija el precio de una cotizacion
+// paso 2: admin fija el precio de una cotizacion (puede ser 0 para servicios de cortesia)
 export const FijarPrecioSchema = z.object({
-    precio: z   
+    precio: z
         .number({ error: "El precio debe ser un número válido" })
-        .nonnegative("El precio debe ser mayor o igual a cero"),
+        .nonnegative("El precio debe ser cero o mayor"),
 });
 
 // paso 3: cliente acepta o rechaza la cotizacion enviada

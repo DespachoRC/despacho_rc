@@ -16,12 +16,24 @@ export class UsersService {
             throw new Error('Credenciales inválidas. Verifica tu correo y contraseña.');
         }
 
-        const isActive = await UserRepository.isUserActive(data.user.id);
-        if (!isActive) {
+        // verificar que el usuario este activo antes de continuar
+        const { data: usuarioData, error: usuarioError } = await supabase
+            .from('usuarios')
+            .select('estatus_usuarios(nombre)')
+            .eq('id', data.user.id)
+            .single();
+
+        if (usuarioError) {
             await supabase.auth.signOut();
-            // Lanza un error genérico o específico, en API_STATUS.md menciona que se puede devolver 403, 
-            // el middleware o el route.ts lo pueden capturar.
-            throw new Error('CUENTA_INACTIVA');
+            throw new Error('No se pudo verificar el estado de la cuenta.');
+        }
+
+        const estatusNombre = (usuarioData?.estatus_usuarios as unknown as { nombre: string } | null)?.nombre;
+
+        if (estatusNombre === 'inactivo') {
+            // revocar la sesion inmediatamente para que no quede activa
+            await supabase.auth.signOut();
+            throw new Error('Tu cuenta está inactiva. Contacta al administrador.');
         }
 
         const roleName = await UserRepository.getRoleName(
@@ -78,6 +90,18 @@ export class UsersService {
     static async asignarContador(clienteId: string, dto: AsignarContadorDTO, request: Request) {
         await getAuthUser(request);
         return await UserRepository.asignarContador(clienteId, dto.contador_id);
+    }
+
+    // obtener el perfil del usuario autenticado
+    static async getPerfil(request: Request) {
+        const user = await getAuthUser(request);
+        return await UserRepository.getPerfil(user.id);
+    }
+
+    // reactivar un usuario inactivo
+    static async reactivar(userId: string, request: Request) {
+        await getAuthUser(request);
+        return await UserRepository.reactivar(userId);
     }
 
 }

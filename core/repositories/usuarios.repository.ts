@@ -177,26 +177,49 @@ export class UserRepository {
         return data;
     }
 
-    public static async isUserActive(userId: string): Promise<boolean> {
+    // obtener el perfil completo del usuario autenticado
+    public static async getPerfil(userId: string) {
         const supabase = await createClient();
-        const { data: estatusData, error: estatusError } = await supabase
-            .from('estatus_usuarios')
-            .select('id')
-            .eq('nombre', 'inactivo')
-            .single();
-
-        if (estatusError || !estatusData) return true; // Si falla, asumimos que está activo para no bloquear
-
         const { data, error } = await supabase
             .from('usuarios')
-            .select('estatus_id')
+            .select(`
+                id, nombre, apellido_paterno, apellido_materno,
+                email, rfc, especialidad_contador, fecha_creacion,
+                roles(nombre),
+                estatus_usuarios(nombre),
+                organizaciones(nombre),
+                regimenes_fiscales(nombre)
+            `)
             .eq('id', userId)
             .single();
 
-        if (error || !data) return false;
-        
-        return data.estatus_id !== estatusData.id;
+        if (error?.code === 'PGRST116') throw new Error('Perfil no encontrado');
+        if (error) throw new Error(error.message);
+        return data;
     }
 
+    // reactivar usuario — cambia estatus a activo
+    public static async reactivar(userId: string) {
+        const supabase = await createClient();
+
+        const { data: estatusData, error: estatusError } = await supabase
+            .from('estatus_usuarios')
+            .select('id')
+            .eq('nombre', 'activo')
+            .single();
+
+        if (estatusError || !estatusData) throw new Error('Estatus activo no encontrado');
+
+        const { data, error } = await supabase
+            .from('usuarios')
+            .update({ estatus_id: estatusData.id })
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error?.code === 'PGRST116') throw new Error('Usuario no encontrado');
+        if (error) throw new Error(error.message);
+        return data;
+    }
 
 }

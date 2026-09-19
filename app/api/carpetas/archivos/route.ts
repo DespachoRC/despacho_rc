@@ -17,7 +17,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const data = await CarpetasService.subirArchivoGeneral(parsed.data);
+        const data = await CarpetasService.subirArchivoGeneral(parsed.data, request);
         return NextResponse.json({ success: true, data }, { status: 201 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error interno del servidor';

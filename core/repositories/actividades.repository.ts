@@ -108,7 +108,24 @@ export class ActividadesRepository {
                 estatus_actividad(nombre)
             `)
             .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false });
+            .order('fecha_creacion', { ascending: false });
+
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
+    // contador consulta sus actividades asignadas
+    public static async findByContador(contadorId: string) {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('actividades')
+            .select(`
+                id, titulo, descripcion, fecha_creacion,
+                estatus_actividad(nombre),
+                usuarios!actividades_cliente_id_fkey(nombre, apellido_paterno)
+            `)
+            .eq('contador_id', contadorId)
+            .order('fecha_creacion', { ascending: false });
 
         if (error) throw new Error(error.message);
         return data;
