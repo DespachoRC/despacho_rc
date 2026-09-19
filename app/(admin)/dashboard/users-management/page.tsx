@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/app/components/ui/Button";
 import { Input } from "@/app/components/ui/Input";
 import { Badge } from "@/app/components/ui/Badge";
@@ -9,50 +9,60 @@ import { PageHeader } from "@/app/components/ui/PageHeader";
 import { DataTable, ColumnDef } from "@/app/components/ui/DataTable";
 import { LuPlus, LuCheck } from "react-icons/lu";
 
-interface ClienteMock {
-    id: string;
-    nombre: string;
-    email: string;
-    regimen: string;
-    regimenVariant: "navy" | "teal" | "amber" | "ghost" | "success" | "danger" | "pending";
-    estatus: string;
-}
-
-interface ContadorMock {
-    id: string;
-    nombre: string;
-    email: string;
-    especialidades: string[];
-    estatus: string;
-}
-
 export default function UsersManagement() {
     const [activeTab, setActiveTab] = useState<string>("clientes");
     const [isCreating, setIsCreating] = useState<boolean>(false);
-    const [isLoading] = useState<boolean>(true);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    const [clientes, setClientes] = useState<any[]>([]);
+    const [contadores, setContadores] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            setIsLoading(true);
+            try {
+                const resClientes = await fetch("/api/users");
+                const resContadores = await fetch("/api/users/contadores");
+                
+                if (resClientes.ok) {
+                    const json = await resClientes.json();
+                    setClientes(json.data || []);
+                }
+                if (resContadores.ok) {
+                    const json = await resContadores.json();
+                    setContadores(json.data || []);
+                }
+            } catch (error) {
+                console.error("Error fetching users", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchUsers();
+    }, []);
 
     const tabsData = [
-        { label: "Clientes", count: 0, value: "clientes" },
-        { label: "Contadores", count: 0, value: "contadores" },
+        { label: "Clientes", count: clientes.length, value: "clientes" },
+        { label: "Contadores", count: contadores.length, value: "contadores" },
     ];
 
-    const clienteColumns: ColumnDef<ClienteMock>[] = [
+    const clienteColumns: ColumnDef<any>[] = [
         {
             header: "Cliente",
             cell: (item) => (
                 <div>
-                    <p className="font-semibold text-navy-950">{item.nombre}</p>
+                    <p className="font-semibold text-navy-950">{item.nombre} {item.apellido_paterno}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{item.email}</p>
                 </div>
             )
         },
         {
             header: "Régimen",
-            cell: (item) => <Badge text={item.regimen} variant={item.regimenVariant} />
+            cell: (item) => <Badge text={item.regimen || "No asignado"} variant="navy" />
         },
         {
             header: "Estatus",
-            cell: (item) => <Badge text={item.estatus} variant="success" />
+            cell: (item) => <Badge text={item.estatus_id === 1 ? "Activo" : "Inactivo"} variant={item.estatus_id === 1 ? "success" : "ghost"} />
         },
         {
             header: "Acción",
@@ -66,12 +76,12 @@ export default function UsersManagement() {
         }
     ];
 
-    const contadorColumns: ColumnDef<ContadorMock>[] = [
+    const contadorColumns: ColumnDef<any>[] = [
         {
             header: "Contador",
             cell: (item) => (
                 <div>
-                    <p className="font-semibold text-navy-950">{item.nombre}</p>
+                    <p className="font-semibold text-navy-950">{item.nombre} {item.apellido_paterno}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{item.email}</p>
                 </div>
             )
@@ -80,15 +90,14 @@ export default function UsersManagement() {
             header: "Especialidades",
             cell: (item) => (
                 <div className="flex flex-wrap gap-1.5">
-                    {item.especialidades.map((esp, i) => (
-                        <Badge key={i} text={esp} variant="amber" />
-                    ))}
+                    {/* Para el mockup, si no tiene especialidades array usamos badges vacios o uno genérico */}
+                    <Badge text={"General"} variant="amber" />
                 </div>
             )
         },
         {
             header: "Estatus",
-            cell: (item) => <Badge text={item.estatus} variant="success" />
+            cell: (item) => <Badge text={item.estatus_id === 1 ? "Activo" : "Inactivo"} variant={item.estatus_id === 1 ? "success" : "ghost"} />
         },
         {
             header: "Acción",
@@ -179,35 +188,6 @@ export default function UsersManagement() {
                             )}
                         </div>
 
-                        {activeTab === "contadores" && (
-                            <div className="flex flex-col gap-3">
-                                <span className="text-base font-semibold text-slate-700 uppercase tracking-wider">
-                                    Especialidades
-                                </span>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {[
-                                        "Personas Morales",
-                                        "Personas Físicas RESICO",
-                                        "Nómina e IMSS",
-                                        "Plataformas Digitales",
-                                    ].map((especialidad, idx) => (
-                                        <label
-                                            key={idx}
-                                            className="flex items-center gap-3 px-4 py-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                className="w-4 h-4 border-slate-300 rounded text-navy-600 focus:ring-navy-600"
-                                            />
-                                            <span className="text-base text-slate-700 font-medium">
-                                                {especialidad}
-                                            </span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
                         <div className="flex items-center gap-4 mt-4">
                             <Button
                                 text="Guardar Registro"
@@ -229,21 +209,19 @@ export default function UsersManagement() {
                 <div className="flex flex-col gap-4 mt-2">
                     {activeTab === "clientes" ? (
                         <DataTable 
-                            data={[]}
+                            data={clientes}
                             isLoading={isLoading}
                             columns={clienteColumns}
                             keyExtractor={(item) => item.id}
                             searchPlaceholder="Buscar clientes..."
-                            onSearch={() => {}}
                         />
                     ) : (
                         <DataTable 
-                            data={[]}
+                            data={contadores}
                             isLoading={isLoading}
                             columns={contadorColumns}
                             keyExtractor={(item) => item.id}
                             searchPlaceholder="Buscar contadores..."
-                            onSearch={() => {}}
                         />
                     )}
                 </div>

@@ -102,7 +102,34 @@ export function Sidebar() {
 
             <div className="w-8 group-hover/sidebar:w-[220px] h-px bg-navy-700 mb-4 transition-[width] duration-300" />
 
-            <div className="w-full px-2">
+            <div className="w-full flex flex-col gap-2 px-2">
+                <div className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200">
+                    <div className="w-6 h-6 bg-navy-100 rounded-full flex items-center justify-center text-navy-700 shrink-0">
+                        {isLoading ? (
+                            <div className="w-4 h-4 rounded-full bg-slate-300 animate-pulse" />
+                        ) : (
+                            <span className="text-xs font-bold">{profile?.nombre?.charAt(0) || "U"}</span>
+                        )}
+                    </div>
+                    <div className="flex-col min-w-0 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100 hidden sm:flex">
+                        {isLoading ? (
+                            <>
+                                <div className="h-3 w-20 bg-slate-400 rounded animate-pulse" />
+                                <div className="h-2 w-12 bg-slate-500 rounded mt-1 animate-pulse" />
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-sm font-semibold text-slate-200 truncate leading-none">
+                                    {profile?.nombre} {profile?.apellido_paterno}
+                                </p>
+                                <p className="text-[10px] text-slate-400 mt-0.5 capitalize truncate">
+                                    {profile?.rol}
+                                </p>
+                            </>
+                        )}
+                    </div>
+                </div>
+
                 <button
                     type="button"
                     onClick={handleLogout}
