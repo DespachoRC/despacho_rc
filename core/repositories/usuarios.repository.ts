@@ -95,7 +95,7 @@ export class UserRepository {
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('usuarios')
-            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, rol_id, contador_id, estatus_id, fecha_creacion')
+            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, rol_id, contador_id, estatus_id, fecha_creacion, estatus_usuarios(nombre)')
             .eq('organizacion_id', organizacionId)
             .order('fecha_creacion', { ascending: false });
 
@@ -108,7 +108,7 @@ export class UserRepository {
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('usuarios')
-            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, rol_id, contador_id, estatus_id, fecha_creacion')
+            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, rol_id, contador_id, estatus_id, fecha_creacion, estatus_usuarios(nombre)')
             .eq('id', userId)
             .single();
 
@@ -227,7 +227,7 @@ export class UserRepository {
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('usuarios')
-            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, estatus_id, fecha_creacion, regimenes_fiscales(nombre)')
+            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, estatus_id, fecha_creacion, regimenes_fiscales(nombre), estatus_usuarios(nombre)')
             .eq('contador_id', contadorId)
             .order('fecha_creacion', { ascending: false });
 

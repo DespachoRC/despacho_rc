@@ -173,7 +173,7 @@ export default function UsersManagement() {
         },
         {
             header: "Estatus",
-            cell: (item) => <Badge text={item.estatus_id === 1 ? "Activo" : "Inactivo"} variant={item.estatus_id === 1 ? "success" : "ghost"} />
+            cell: (item) => <Badge text={item.estatus_usuarios?.nombre === "activo" ? "Activo" : "Inactivo"} variant={item.estatus_usuarios?.nombre === "activo" ? "success" : "ghost"} />
         },
         {
             header: "Acción",
@@ -207,7 +207,7 @@ export default function UsersManagement() {
         },
         {
             header: "Estatus",
-            cell: (item) => <Badge text={item.estatus_id === 1 ? "Activo" : "Inactivo"} variant={item.estatus_id === 1 ? "success" : "ghost"} />
+            cell: (item) => <Badge text={item.estatus_usuarios?.nombre === "activo" ? "Activo" : "Inactivo"} variant={item.estatus_usuarios?.nombre === "activo" ? "success" : "ghost"} />
         },
         {
             header: "Acción",

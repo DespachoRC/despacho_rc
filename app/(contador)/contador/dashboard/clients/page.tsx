@@ -82,8 +82,8 @@ export default function ClientsPage() {
                                         <LuUsers className="w-5 h-5" />
                                     </div>
                                     <Badge 
-                                        text={cliente.estatus_id === 1 ? "ACTIVO" : "INACTIVO"} 
-                                        variant={cliente.estatus_id === 1 ? "success" : "ghost"} 
+                                        text={cliente.estatus_usuarios?.nombre === "activo" ? "ACTIVO" : "INACTIVO"} 
+                                        variant={cliente.estatus_usuarios?.nombre === "activo" ? "success" : "ghost"} 
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1">
