@@ -95,7 +95,7 @@ export class UserRepository {
         const supabase = await createClient();
         const { data, error } = await supabase
             .from('usuarios')
-            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, rol_id, contador_id, estatus_id, fecha_creacion, estatus_usuarios(nombre), roles(nombre)')
+            .select('id, nombre, apellido_paterno, apellido_materno, email, rfc, rol_id, contador_id, estatus_id, fecha_creacion, estatus_usuarios(nombre), roles(nombre), regimenes_fiscales(nombre)')
             .eq('organizacion_id', organizacionId)
             .order('fecha_creacion', { ascending: false });
 
