@@ -74,6 +74,14 @@ export class ConversacionesService {
         // Necesitamos asegurar de extraer el organizacion_id correctamente
         const userOrg = await UserRepository.get_org_id_repository(user.id);
 
+        console.log('[DEBUG] crearConversacion:', {
+            userId: user.id,
+            rol,
+            userOrg,
+            tipo,
+            contraparteId
+        });
+
         let cliente_id = '';
         let contador_id = undefined;
         let admin_id = undefined;
@@ -98,6 +106,18 @@ export class ConversacionesService {
             } else {
                 throw new Error('Solo clientes y administradores pueden crear conversaciones de este tipo');
             }
+        }
+
+        // Si ya existe una conversación previa entre ambos participantes, devolverla
+        const conversacionExistente = await ConversacionesRepository.buscarConversacion({
+            tipo,
+            cliente_id,
+            contador_id,
+            admin_id
+        });
+
+        if (conversacionExistente) {
+            return conversacionExistente;
         }
 
         return await ConversacionesRepository.crearConversacion({

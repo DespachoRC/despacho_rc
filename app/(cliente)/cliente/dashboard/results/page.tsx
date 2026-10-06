@@ -167,8 +167,8 @@ export default function ResultsPage() {
 
     const handleStartConversacion = async (primerMensaje: string) => {
         if (!profile?.contador_id) {
-            alert("No tienes un contador asignado todavía.");
-            return;
+            toast.error("No tienes un contador asignado todavía.");
+            throw new Error("Sin contador asignado");
         }
 
         try {
@@ -183,19 +183,29 @@ export default function ResultsPage() {
             });
             const jsonChat = await resChat.json();
             
-            if (jsonChat.success) {
+            if (jsonChat.success && jsonChat.data?.id) {
                 setConversacionId(jsonChat.data.id);
                 // Enviar primer mensaje
-                await fetch(`/api/conversaciones/${jsonChat.data.id}/mensajes`, {
+                const resMsg = await fetch(`/api/conversaciones/${jsonChat.data.id}/mensajes`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contenido: primerMensaje })
                 });
+                const jsonMsg = await resMsg.json();
+                if (!jsonMsg.success) {
+                    toast.error(jsonMsg.error || "No se pudo enviar el primer mensaje");
+                    throw new Error(jsonMsg.error);
+                }
             } else {
-                alert(jsonChat.error);
+                toast.error(jsonChat.error || "No se pudo iniciar la conversación");
+                throw new Error(jsonChat.error);
             }
-        } catch (error) {
-            console.error(error);
+        } catch (error: any) {
+            console.error("Error al iniciar conversación:", error);
+            if (!error?.message?.includes("Sin contador")) {
+                toast.error("Error al iniciar la conversación o enviar mensaje");
+            }
+            throw error;
         }
     };
 

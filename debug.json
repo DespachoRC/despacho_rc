@@ -1,17 +1,4 @@
 {
-  "cliente_id": "78f4f1e1-ef59-4bc2-8f4a-4824b2afed07",
-  "documentos": [
-    {
-      "id": "b7cc94b1-eb62-4537-93ed-5976cecb71d7",
-      "ruta_archivo": "actividades/d494fe97-d289-4c44-9511-a36183533a77/1789851763587-04cvmsz1jgea.png",
-      "subido_por_id": "78f4f1e1-ef59-4bc2-8f4a-4824b2afed07",
-      "nombre_archivo": "logo.png"
-    },
-    {
-      "id": "e681d798-81aa-46fb-af68-708d9e2c508d",
-      "ruta_archivo": "actividades/d494fe97-d289-4c44-9511-a36183533a77/entregables/1789851814786-w774jhmonp9.pdf",
-      "subido_por_id": "401838ec-6617-471e-a552-bed05104f12e",
-      "nombre_archivo": "Spanish_Ethics_Decision_Tree.pdf"
-    }
-  ]
+  "cliente_id": "c09d68db-ab13-452d-b2bd-b6349409cb9c",
+  "documentos": []
 }
