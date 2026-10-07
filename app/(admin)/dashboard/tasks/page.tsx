@@ -19,6 +19,11 @@ interface CotizacionItem {
     fecha_creacion: string;
     estatus_id: string;
     estatus_cotizacion?: { nombre: string } | null;
+    cotizacion_actividades?: {
+        id: string;
+        titulo_snapshot: string;
+        notas_cliente: string | null;
+    }[];
     usuarios?: {
         nombre: string;
         apellido_paterno: string;
@@ -197,6 +202,7 @@ export default function Task() {
                     cotizacionesFiltradas.map((cot) => {
                         const estatus = cot.estatus_cotizacion?.nombre || "pendiente";
                         const tienePrecio = cot.precio !== null && cot.precio !== undefined;
+                        const cantidadActividades = cot.cotizacion_actividades?.length || 1;
                         
                         let estatusText = "Por Cotizar";
                         let estatusVariant: "pending" | "navy" | "success" | "danger" | "ghost" = "pending";
@@ -235,6 +241,28 @@ export default function Task() {
                                             {cot.descripcion || cot.notas_cliente || "Sin descripción proporcionada."}
                                         </p>
                                     </div>
+                                    {!!cot.cotizacion_actividades?.length && (
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-navy-950 mb-1">Servicios incluidos</h4>
+                                            <ul className="space-y-2">
+                                                {cot.cotizacion_actividades.map((actividad) => (
+                                                    <li
+                                                        key={actividad.id}
+                                                        className="rounded-lg bg-slate-50 px-3 py-2"
+                                                    >
+                                                        <p className="text-sm font-medium text-slate-700">
+                                                            {actividad.titulo_snapshot}
+                                                        </p>
+                                                        {actividad.notas_cliente && (
+                                                            <p className="mt-1 text-xs text-slate-500 whitespace-pre-line">
+                                                                {actividad.notas_cliente}
+                                                            </p>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
 
                                     {/* Acciones y detalle según estado */}
                                     {estatus === "aceptada" ? (
@@ -244,7 +272,7 @@ export default function Task() {
                                                     Presupuesto Aceptado: <span className="font-bold text-emerald-700">${cot.precio} MXN</span>
                                                 </p>
                                                 <p className="text-xs text-emerald-700/90 mt-0.5">
-                                                    Esta cotización se convirtió en una actividad activa para el contador asignado.
+                                                    Esta cotización generó {cantidadActividades} {cantidadActividades === 1 ? "actividad" : "actividades"} para el contador asignado.
                                                 </p>
                                             </div>
                                             <Link href="/dashboard/activities">
@@ -287,7 +315,7 @@ export default function Task() {
                                                     variant="solid"
                                                     icon={<LuRefreshCw />}
                                                     className="px-4 py-3 text-sm whitespace-nowrap"
-                                                    disabled={procesando[cot.id] || !precios[cot.id]}
+                                                    disabled={procesando[cot.id] || precios[cot.id] === undefined || precios[cot.id].trim() === ""}
                                                     onClick={() => handleAprobar(cot.id)}
                                                 />
                                             </div>
@@ -319,7 +347,7 @@ export default function Task() {
                                                     text="Ajustar"
                                                     variant="outline"
                                                     className="px-3 py-3 text-xs whitespace-nowrap"
-                                                    disabled={procesando[cot.id] || !precios[cot.id]}
+                                                    disabled={procesando[cot.id] || precios[cot.id] === undefined || precios[cot.id].trim() === ""}
                                                     onClick={() => handleAprobar(cot.id)}
                                                 />
                                             </div>
