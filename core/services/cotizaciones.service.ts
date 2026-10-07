@@ -5,11 +5,11 @@ import { getAuthUser } from '../db/get-user';
 
 export class CotizacionesService {
 
-    // admin obtiene las cotizaciones pendientes de su organizacion
+    // admin obtiene las cotizaciones de su organizacion
     static async getPendientes(request: Request) {
         const user = await getAuthUser(request);
         const organizacionId = await UserRepository.get_org_id_repository(user.id);
-        return await CotizacionesRepository.findPendientes(organizacionId);
+        return await CotizacionesRepository.findAllAdmin(organizacionId);
     }
 
     // cliente crea una nueva cotizacion

@@ -1,4 +1,17 @@
 {
   "cliente_id": "c09d68db-ab13-452d-b2bd-b6349409cb9c",
-  "documentos": []
+  "documentos": [
+    {
+      "id": "257c38bc-ba7d-4c11-bc0b-11b3f51f67f0",
+      "ruta_archivo": "actividades/b02a3812-fd93-4158-89a5-5fa3b737b743/1791339266077-c6c43xljhkb.pdf",
+      "subido_por_id": "c09d68db-ab13-452d-b2bd-b6349409cb9c",
+      "nombre_archivo": "CV.pdf"
+    },
+    {
+      "id": "c63fcf31-627b-43f5-a9f8-351de43d1276",
+      "ruta_archivo": "actividades/b02a3812-fd93-4158-89a5-5fa3b737b743/1791339585293-8fnbp65lung.pdf",
+      "subido_por_id": "c09d68db-ab13-452d-b2bd-b6349409cb9c",
+      "nombre_archivo": "CV.pdf"
+    }
+  ]
 }

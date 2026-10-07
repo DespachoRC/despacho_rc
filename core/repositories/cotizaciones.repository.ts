@@ -16,6 +16,20 @@ export class CotizacionesRepository {
         return data.id;
     }
 
+    // obtener cotizaciones de una organizacion (con su estatus y usuario)
+    static async findAllAdmin(organizacionId: string) {
+        const supabase = await createClient();
+
+        const { data, error } = await supabase
+            .from('cotizaciones')
+            .select('*, usuarios(nombre, apellido_paterno), estatus_cotizacion(nombre)')
+            .eq('organizacion_id', organizacionId)
+            .order('fecha_creacion', { ascending: false });
+
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
     // obtener cotizaciones pendientes de una organizacion
     static async findPendientes(organizacionId: string) {
         const supabase = await createClient();
@@ -23,7 +37,7 @@ export class CotizacionesRepository {
 
         const { data, error } = await supabase
             .from('cotizaciones')
-            .select('*, usuarios(nombre, apellido_paterno)')
+            .select('*, usuarios(nombre, apellido_paterno), estatus_cotizacion(nombre)')
             .eq('estatus_id', estatusId)
             .eq('organizacion_id', organizacionId)
             .order('fecha_creacion', { ascending: true });
