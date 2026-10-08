@@ -9,6 +9,13 @@ export default function UnauthorizedPage() {
         } catch {
             // Ignorar error si no hay conexión
         } finally {
+            if (typeof document !== 'undefined') {
+                document.cookie.split(";").forEach((c) => {
+                    document.cookie = c
+                        .replace(/^ +/, "")
+                        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+            }
             window.location.href = '/auth/login';
         }
     };

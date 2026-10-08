@@ -43,18 +43,44 @@ export async function authMiddleware(request: NextRequest) {
 
     // Si hay usuario obtenemos su rol
     if (user) {
-        const { data: userData } = await supabase.from('usuarios').select('roles(nombre)').eq('id', user.id).single();
-        const roleRaw = Array.isArray(userData?.roles) 
-            ? (userData?.roles as any)[0]?.nombre 
-            : (userData?.roles as any)?.nombre;
-        const role = roleRaw ? String(roleRaw).toLowerCase() : undefined;
+        let role: string | undefined = undefined;
+
+        try {
+            const { data: userData } = await supabase
+                .from('usuarios')
+                .select('rol_id, roles(nombre)')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            let roleRaw: string | undefined = undefined;
+            if (userData?.roles) {
+                roleRaw = Array.isArray(userData.roles)
+                    ? (userData.roles as any)[0]?.nombre
+                    : (userData.roles as any)?.nombre;
+            }
+
+            if (!roleRaw && userData?.rol_id) {
+                const { data: roleData } = await supabase
+                    .from('roles')
+                    .select('nombre')
+                    .eq('id', userData.rol_id)
+                    .maybeSingle();
+                roleRaw = roleData?.nombre;
+            }
+
+            if (roleRaw) {
+                role = String(roleRaw).toLowerCase().trim();
+            }
+        } catch {
+            // Ignorar errores en la consulta de rol para evitar bloqueos
+        }
 
         // Si intenta entrar al login o a la raiz, lo mandamos a su dashboard correspondiente
         if (pathname.startsWith('/auth/login') || pathname === '/') {
-            if (role === 'owner') return NextResponse.redirect(new URL('/superadmin/dashboard', request.url));
-            if (role === 'admin') return NextResponse.redirect(new URL('/dashboard/metrics', request.url));
-            if (role === 'contador') return NextResponse.redirect(new URL('/contador/dashboard/clients', request.url));
-            if (role === 'cliente') return NextResponse.redirect(new URL('/cliente/dashboard/upload', request.url));
+            if (role === 'owner' || role?.includes('owner')) return NextResponse.redirect(new URL('/superadmin/dashboard', request.url));
+            if (role === 'admin' || role?.includes('admin')) return NextResponse.redirect(new URL('/dashboard/metrics', request.url));
+            if (role === 'contador' || role?.includes('contador')) return NextResponse.redirect(new URL('/contador/dashboard/clients', request.url));
+            if (role === 'cliente' || role?.includes('cliente')) return NextResponse.redirect(new URL('/cliente/dashboard/upload', request.url));
             
             if (pathname === '/') {
                 return NextResponse.redirect(new URL('/auth/login', request.url));
@@ -68,17 +94,26 @@ export async function authMiddleware(request: NextRequest) {
         const isClienteView = pathname.startsWith('/cliente');
         const isContadorView = pathname.startsWith('/contador');
 
-        if (isSuperadminView && role !== 'owner') {
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
-        }
-        if (isDashboardAdmin && role !== 'admin') {
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
-        }
-        if (isClienteView && role !== 'cliente') {
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
-        }
-        if (isContadorView && role !== 'contador') {
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
+        if (!role) {
+            // Si el rol es desconocido o no se pudo cargar, mandarlo a login para restablecer sesión
+            if (isSuperadminView || isDashboardAdmin || isClienteView || isContadorView) {
+                return NextResponse.redirect(new URL('/auth/login', request.url));
+            }
+        } else {
+            const matchesRole = (targetRole: string) => role === targetRole || role!.includes(targetRole);
+
+            if (isSuperadminView && !matchesRole('owner')) {
+                return NextResponse.redirect(new URL('/unauthorized', request.url));
+            }
+            if (isDashboardAdmin && !matchesRole('admin')) {
+                return NextResponse.redirect(new URL('/unauthorized', request.url));
+            }
+            if (isClienteView && !matchesRole('cliente')) {
+                return NextResponse.redirect(new URL('/unauthorized', request.url));
+            }
+            if (isContadorView && !matchesRole('contador')) {
+                return NextResponse.redirect(new URL('/unauthorized', request.url));
+            }
         }
     }
 
