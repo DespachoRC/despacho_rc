@@ -265,13 +265,22 @@ function ClientDetailsContent() {
                                                 <h3 className="text-lg font-bold text-navy-950">
                                                     {act.titulo || 'Actividad'}
                                                 </h3>
-                                                <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-medium">
+                                                <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${
+                                                    (() => {
+                                                        const e = act.estatus_actividad?.nombre || 'pendiente';
+                                                        if (e === 'completada') return 'bg-emerald-100 text-emerald-700';
+                                                        if (e === 'pendiente') return 'bg-amber-100 text-amber-700';
+                                                        if (e === 'en_proceso') return 'bg-blue-100 text-blue-700';
+                                                        if (e === 'bloqueada') return 'bg-red-100 text-red-700';
+                                                        return 'bg-slate-100 text-slate-600';
+                                                    })()
+                                                }`}>
                                                     {act.estatus_actividad?.nombre || 'Pendiente'}
                                                 </span>
                                             </div>
                                         </div>
                                         <span className="text-xs text-slate-400">
-                                            Creada: {new Date(act.created_at).toLocaleDateString()}
+                                            Creada: {new Date(act.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" })}
                                         </span>
                                     </div>
                                     
@@ -333,7 +342,7 @@ function ClientDetailsContent() {
                                 {actividadesPendientes.length === 0 && <option value="">Sin actividades pendientes</option>}
                                 {actividadesPendientes.map(act => (
                                     <option key={act.id} value={act.id}>
-                                        {act.titulo || 'Actividad'} - {new Date(act.created_at).toLocaleDateString()}
+                                        {act.titulo || 'Actividad'} - {new Date(act.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" })}
                                     </option>
                                 ))}
                             </select>
