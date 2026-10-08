@@ -218,7 +218,7 @@ export default function ResultsPage() {
                 />
 
                 <Button
-                    text={chatAbierto ? "Ocultar Chat" : "Chat con Contadora"}
+                    text={chatAbierto ? "Ocultar Chat" : "Mostrar Chat"}
                     icon={<LuMessageSquare className="w-4 h-4" />}
                     onClick={() => setChatAbierto(!chatAbierto)}
                     className="mt-1"

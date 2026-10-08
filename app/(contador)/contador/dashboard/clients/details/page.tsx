@@ -25,6 +25,7 @@ function ClientDetailsContent() {
     const [clienteInfo, setClienteInfo] = useState<{nombre: string, email: string} | null>(null);
 
     const [actividades, setActividades] = useState<any[]>([]);
+    const [actividadesPendientes, setActividadesPendientes] = useState<any[]>([]);
     const [archivosGenerales, setArchivosGenerales] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [selectedActividadId, setSelectedActividadId] = useState<string>("");
@@ -50,12 +51,22 @@ function ClientDetailsContent() {
                 })
                 .catch(console.error);
 
-            // Actividades (Insumos y Entregables)
+            // Actividades — todas para la bandeja
             fetch(`/api/actividades/resultados?cliente_id=${cliente_id}`)
                 .then(res => res.json())
                 .then(json => {
                     if (json.success && json.data) {
                         setActividades(json.data);
+                    }
+                })
+                .catch(console.error);
+
+            // Actividades pendientes — solo para el select de entregables
+            fetch(`/api/actividades/resultados?cliente_id=${cliente_id}&solo_pendientes=true`)
+                .then(res => res.json())
+                .then(json => {
+                    if (json.success && json.data) {
+                        setActividadesPendientes(json.data);
                         if (json.data.length > 0) {
                             setSelectedActividadId(json.data[0].id);
                         }
@@ -92,6 +103,13 @@ function ClientDetailsContent() {
             if (json.success) {
                 alert("Entregables subidos exitosamente");
                 setFilesToUpload([]);
+                // Refrescar el listado para que la actividad completada desaparezca del select
+                const actRes = await fetch(`/api/actividades/resultados?cliente_id=${cliente_id}&solo_pendientes=true`);
+                const actJson = await actRes.json();
+                if (actJson.success && actJson.data) {
+                    setActividadesPendientes(actJson.data);
+                    setSelectedActividadId(actJson.data.length > 0 ? actJson.data[0].id : "");
+                }
             } else {
                 alert(`Error: ${json.error}`);
             }
@@ -312,8 +330,8 @@ function ClientDetailsContent() {
                                 onChange={(e) => setSelectedActividadId(e.target.value)}
                                 className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-transparent cursor-pointer"
                             >
-                                {actividades.length === 0 && <option value="">Sin actividades disponibles</option>}
-                                {actividades.map(act => (
+                                {actividadesPendientes.length === 0 && <option value="">Sin actividades pendientes</option>}
+                                {actividadesPendientes.map(act => (
                                     <option key={act.id} value={act.id}>
                                         {act.titulo || 'Actividad'} - {new Date(act.created_at).toLocaleDateString()}
                                     </option>

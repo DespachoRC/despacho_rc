@@ -132,5 +132,37 @@ export class ActividadesRepository {
         return data;
     }
 
+    // actividades pendientes de un cliente — solo las que no están completadas
+    public static async getPendientesByCliente(clienteId: string) {
+        const supabase = await createClient();
+
+        // primero obtenemos el id del estatus "completada"
+        const { data: estatusData } = await supabase
+            .from('estatus_actividad')
+            .select('id')
+            .eq('nombre', 'completada')
+            .single();
+
+        const query = supabase
+            .from('actividades')
+            .select(`
+                *,
+                documentos(id, nombre_archivo, ruta_archivo, subido_por_id),
+                estatus_actividad(nombre),
+                cotizaciones(titulo, descripcion)
+            `)
+            .eq('cliente_id', clienteId)
+            .order('fecha_creacion', { ascending: false });
+
+        // excluir completadas si se obtuvo el id
+        if (estatusData?.id) {
+            query.neq('estatus_id', estatusData.id);
+        }
+
+        const { data, error } = await query;
+        if (error) throw new Error(error.message);
+        return data.map((act: any) => ({ ...act, created_at: act.fecha_creacion }));
+    }
+
 
 }
