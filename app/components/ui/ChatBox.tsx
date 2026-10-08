@@ -150,11 +150,6 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
                 ) : (
                     mensajes.map((msg) => {
                         const isMe = msg.remitente_id === profile?.id;
-                        const timeString = new Date(msg.fecha_envio).toLocaleTimeString("es-MX", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: false,
-                        });
 
                         return (
                             <div
@@ -177,7 +172,7 @@ export function ChatBox({ titulo, conversacionId, onStartConversacion }: ChatBox
                                 >
                                     <p className="leading-relaxed whitespace-pre-wrap">{msg.contenido}</p>
                                 </div>
-                                <span className="text-[10px] text-slate-400 px-1 font-medium">{timeString}</span>
+                                <span className="text-[10px] text-slate-400 px-1 font-medium"></span>
                             </div>
                         );
                     })
