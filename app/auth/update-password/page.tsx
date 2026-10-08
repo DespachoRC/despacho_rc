@@ -58,7 +58,10 @@ export default function UpdatePasswordPage() {
             if (event === "PASSWORD_RECOVERY") {
                 setPageState("ready");
             } else if (event === "SIGNED_IN" && session) {
-                // Puede llegar como SIGNED_IN si el exchange ya ocurrió en el callback
+                // Llega como SIGNED_IN cuando el exchange PKCE ya ocurrió en /api/auth/callback
+                setPageState("ready");
+            } else if (event === "INITIAL_SESSION" && session) {
+                // En producción con PKCE, la sesión ya está activa al cargar la página
                 setPageState("ready");
             }
         });
