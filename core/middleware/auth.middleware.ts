@@ -37,7 +37,7 @@ export async function authMiddleware(request: NextRequest) {
     const { pathname } = request.nextUrl
 
     // Si no hay usuario y trata de entrar a rutas protegidas
-    if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/cliente') || pathname.startsWith('/contador'))) {
+    if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/cliente') || pathname.startsWith('/contador') || pathname.startsWith('/superadmin'))) {
         return NextResponse.redirect(new URL('/auth/login', request.url))
     }
 
@@ -49,6 +49,7 @@ export async function authMiddleware(request: NextRequest) {
 
         // Si intenta entrar al login o a la raiz, lo mandamos a su dashboard correspondiente
         if (pathname.startsWith('/auth/login') || pathname === '/') {
+            if (role === 'owner') return NextResponse.redirect(new URL('/superadmin/dashboard', request.url));
             if (role === 'admin') return NextResponse.redirect(new URL('/dashboard/metrics', request.url));
             if (role === 'contador') return NextResponse.redirect(new URL('/contador/dashboard/clients', request.url));
             if (role === 'cliente') return NextResponse.redirect(new URL('/cliente/dashboard/upload', request.url));
@@ -56,10 +57,14 @@ export async function authMiddleware(request: NextRequest) {
         }
 
         // Restricción de rutas por rol
+        const isSuperadminView = pathname.startsWith('/superadmin');
         const isDashboardAdmin = pathname.startsWith('/dashboard');
         const isClienteView = pathname.startsWith('/cliente');
         const isContadorView = pathname.startsWith('/contador');
 
+        if (isSuperadminView && role !== 'owner') {
+            return NextResponse.redirect(new URL('/unauthorized', request.url));
+        }
         if (isDashboardAdmin && role !== 'admin') {
             return NextResponse.redirect(new URL('/unauthorized', request.url));
         }

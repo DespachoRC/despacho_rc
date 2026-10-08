@@ -72,8 +72,10 @@ export default function Login() {
                 redirectUrl = "/contador/dashboard/clients";
             } else if (role.includes("cliente")) {
                 redirectUrl = "/cliente/dashboard/upload";
+            } else if (role.includes("owner")) {
+                redirectUrl = "/superadmin/dashboard";
             } else {
-                // admin, owner o cualquier otro rol con acceso al panel
+                // admin o cualquier otro rol con acceso al panel
                 redirectUrl = "/dashboard/metrics";
             }
 
