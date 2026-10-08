@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Input } from "@/app/components/ui/Input";
 import { Button } from "@/app/components/ui/Button";
-import { LuLock } from "react-icons/lu";
-import { createClient } from "@/core/db/clients";
+import { LuLock, LuCircleAlert } from "react-icons/lu";
+import { createBrowserClient } from "@supabase/ssr";
+
+// Cliente con flowType implicit para coincidir con el servidor que emitió el token
+function createImplicitClient() {
+    return createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+        { auth: { flowType: "implicit" } }
+    );
+}
 
 const schema = z.object({
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
@@ -20,29 +29,64 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+type PageState = "verifying" | "ready" | "invalid" | "success";
+
 export default function UpdatePasswordPage() {
     const router = useRouter();
+    const [pageState, setPageState] = useState<PageState>("verifying");
     const [apiError, setApiError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [success, setSuccess] = useState(false);
 
     const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
         resolver: zodResolver(schema),
     });
 
+    useEffect(() => {
+        // Supabase redirige con error en query params cuando el token expiró o es inválido
+        const params = new URLSearchParams(window.location.search);
+        const errorCode = params.get("error_code");
+        if (errorCode) {
+            setPageState("invalid");
+            return;
+        }
+
+        const supabase = createImplicitClient();
+
+        // Con flowType implicit el SDK detecta el hash fragment
+        // (#access_token=...&type=recovery) y dispara PASSWORD_RECOVERY.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === "PASSWORD_RECOVERY") {
+                setPageState("ready");
+            } else if (event === "SIGNED_IN" && session) {
+                // Puede llegar como SIGNED_IN si el exchange ya ocurrió en el callback
+                setPageState("ready");
+            }
+        });
+
+        // Timeout: si en 5 segundos no llegó sesión, el token es inválido
+        const timeout = setTimeout(() => {
+            setPageState((current) => current === "verifying" ? "invalid" : current);
+        }, 5000);
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(timeout);
+        };
+    }, []);
+
     const onSubmit = async (values: FormValues) => {
         setApiError(null);
         setIsLoading(true);
         try {
-            const supabase = createClient();
+            const supabase = createImplicitClient();
             const { error } = await supabase.auth.updateUser({
-                password: values.password
+                password: values.password,
             });
 
             if (error) {
                 setApiError(error.message);
             } else {
-                setSuccess(true);
+                setPageState("success");
                 setTimeout(() => {
                     router.push("/auth/login");
                 }, 3000);
@@ -54,7 +98,56 @@ export default function UpdatePasswordPage() {
         }
     };
 
-    if (success) {
+    // Estado: verificando token
+    if (pageState === "verifying") {
+        return (
+            <div className="w-full flex flex-col gap-7 animate-in fade-in duration-300">
+                <div className="flex flex-col gap-5 text-center items-center">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-2">
+                        <div className="w-7 h-7 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                            Verificando enlace...
+                        </h1>
+                        <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                            Por favor espera mientras validamos tu solicitud.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Estado: token inválido o expirado
+    if (pageState === "invalid") {
+        return (
+            <div className="w-full flex flex-col gap-7 animate-in fade-in zoom-in-95 duration-300">
+                <div className="flex flex-col gap-5 text-center items-center">
+                    <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mb-2">
+                        <LuCircleAlert className="w-8 h-8 text-red-500" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                            Enlace inválido o expirado
+                        </h1>
+                        <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                            Este enlace de recuperación ya no es válido. Los enlaces expiran en 60 minutos.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => router.push("/auth/password-reset")}
+                        className="mt-2 text-sm font-semibold text-navy-600 hover:text-navy-800 transition-colors underline underline-offset-2"
+                    >
+                        Solicitar un nuevo enlace
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Estado: contraseña actualizada con éxito
+    if (pageState === "success") {
         return (
             <div className="w-full flex flex-col gap-7 animate-in fade-in zoom-in-95 duration-300">
                 <div className="flex flex-col gap-5 text-center items-center">
@@ -74,6 +167,7 @@ export default function UpdatePasswordPage() {
         );
     }
 
+    // Estado: formulario listo para usar
     return (
         <div className="w-full flex flex-col gap-7">
             <div className="flex flex-col gap-5">

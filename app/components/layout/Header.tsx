@@ -296,7 +296,14 @@ export function Header() {
                                 <button 
                                     onClick={() => {
                                         setProfileOpen(false);
-                                        const basePath = profile.rol === 'admin' || profile.rol === 'owner' ? '/dashboard' : `/${profile.rol}/dashboard`;
+                                        let basePath: string;
+                                        if (profile.rol === 'owner') {
+                                            basePath = '/superadmin/dashboard';
+                                        } else if (profile.rol === 'admin') {
+                                            basePath = '/dashboard';
+                                        } else {
+                                            basePath = `/${profile.rol}/dashboard`;
+                                        }
                                         router.push(`${basePath}/settings`);
                                     }}
                                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-left cursor-pointer"
