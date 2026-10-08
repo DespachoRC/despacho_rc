@@ -44,8 +44,10 @@ export async function authMiddleware(request: NextRequest) {
     // Si hay usuario obtenemos su rol
     if (user) {
         const { data: userData } = await supabase.from('usuarios').select('roles(nombre)').eq('id', user.id).single();
-        // @ts-ignore
-        const role = userData?.roles?.nombre;
+        const roleRaw = Array.isArray(userData?.roles) 
+            ? (userData?.roles as any)[0]?.nombre 
+            : (userData?.roles as any)?.nombre;
+        const role = roleRaw ? String(roleRaw).toLowerCase() : undefined;
 
         // Si intenta entrar al login o a la raiz, lo mandamos a su dashboard correspondiente
         if (pathname.startsWith('/auth/login') || pathname === '/') {
