@@ -55,7 +55,11 @@ export async function authMiddleware(request: NextRequest) {
             if (role === 'admin') return NextResponse.redirect(new URL('/dashboard/metrics', request.url));
             if (role === 'contador') return NextResponse.redirect(new URL('/contador/dashboard/clients', request.url));
             if (role === 'cliente') return NextResponse.redirect(new URL('/cliente/dashboard/upload', request.url));
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
+            
+            if (pathname === '/') {
+                return NextResponse.redirect(new URL('/auth/login', request.url));
+            }
+            return response;
         }
 
         // Restricción de rutas por rol
