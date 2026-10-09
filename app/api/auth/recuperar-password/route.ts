@@ -1,5 +1,5 @@
-import { createClient } from '@/core/db/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/core/db/server'
 
 export async function POST(request: NextRequest) {
     try {
@@ -12,18 +12,22 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // @supabase/ssr usa PKCE por defecto. El code verifier se guarda en
+        // una cookie que el callback necesita para canjear el código del correo.
         const supabase = await createClient()
 
+        const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin)
+            .replace(/\/$/, '')
+
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/nueva-password`,
+            redirectTo: `${siteUrl}/api/auth/callback?next=/auth/update-password`,
         })
 
         if (error) throw new Error(error.message)
 
-        // siempre respondemos success aunque el email no exista
-        // para no revelar si un correo está registrado o no
+        // Siempre respondemos success para no revelar si el correo existe
         return NextResponse.json(
-            { success: true, message: 'Si el correo existe recibirás un enlace de recuperación' },
+            { success: true },
             { status: 200 }
         )
     } catch (error) {

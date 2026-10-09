@@ -130,15 +130,24 @@ Activa o desactiva un registro.
 Admin lista las cotizaciones pendientes de su organización. Sin body.
 
 ### `POST /cotizaciones`
-Cliente crea una nueva solicitud de cotización.
+Cliente crea una sola cotización que puede incluir uno o varios servicios. El precio se asigna a la cotización y el cliente acepta o rechaza el conjunto completo.
 ```json
 {
-    "titulo": "Declaración Anual 2024",
-    "descripcion": "Persona física con actividad empresarial",
-    "actividad_catalogo_id": "<uuid de lista_actividades>",
-    "notas_cliente": "Tengo ingresos por honorarios"
+    "titulo": "Solicitud de 2 actividades",
+    "descripcion": "Contexto general opcional",
+    "actividades": [
+        {
+            "catalogo_actividad_id": "<uuid de catalogo_actividades>",
+            "notas_cliente": "Nota opcional para este servicio"
+        },
+        {
+            "catalogo_actividad_id": "<uuid de otro servicio>",
+            "notas_cliente": "Otra nota opcional"
+        }
+    ]
 }
 ```
+`actividades` debe contener al menos un servicio y no permite IDs repetidos. El campo legado `actividad_catalogo_id` sigue disponible para solicitudes individuales existentes.
 
 ### `PUT /cotizaciones/:id/precio`
 Admin fija el precio de una cotización.
@@ -149,7 +158,7 @@ Admin fija el precio de una cotización.
 ```
 
 ### `PUT /cotizaciones/:id/respuesta`
-Cliente acepta o rechaza una cotización. Al aceptar, el trigger crea la actividad automáticamente.
+Cliente acepta o rechaza la cotización completa. Al aceptar una cotización agrupada, se crea una actividad pendiente por cada servicio incluido; el precio total permanece en la cotización.
 ```json
 {
     "respuesta": "aceptada"

@@ -49,6 +49,41 @@ export class ConversacionesRepository {
         return data;
     }
 
+    // Buscar una conversación existente por criterios
+    public static async buscarConversacion(criterios: {
+        tipo: 'contador_cliente' | 'cliente_admin';
+        cliente_id: string;
+        contador_id?: string;
+        admin_id?: string;
+    }) {
+        const supabase = await createClient();
+        let query = supabase
+            .from('conversaciones')
+            .select(`
+                id, 
+                tipo,
+                fecha_creacion,
+                cliente_id,
+                contador_id,
+                admin_id,
+                cotizacion_id,
+                actividad_id
+            `)
+            .eq('tipo', criterios.tipo)
+            .eq('cliente_id', criterios.cliente_id);
+
+        if (criterios.contador_id) {
+            query = query.eq('contador_id', criterios.contador_id);
+        }
+        if (criterios.admin_id) {
+            query = query.eq('admin_id', criterios.admin_id);
+        }
+
+        const { data, error } = await query.maybeSingle();
+        if (error) return null;
+        return data;
+    }
+
     // Crear una nueva conversación
     public static async crearConversacion(datos: {
         organizacion_id: string;
@@ -60,13 +95,37 @@ export class ConversacionesRepository {
         actividad_id?: string;
     }) {
         const supabase = await createClient();
+
+        // Limpiar campos undefined para evitar enviar llaves inválidas o nulas
+        const payload: Record<string, any> = {
+            organizacion_id: datos.organizacion_id,
+            tipo: datos.tipo,
+            cliente_id: datos.cliente_id,
+        };
+
+        if (datos.contador_id) payload.contador_id = datos.contador_id;
+        if (datos.admin_id) payload.admin_id = datos.admin_id;
+        if (datos.cotizacion_id) payload.cotizacion_id = datos.cotizacion_id;
+        if (datos.actividad_id) payload.actividad_id = datos.actividad_id;
+
+        console.log('[DEBUG] Intentando insertar conversacion:', JSON.stringify(payload, null, 2));
+
         const { data, error } = await supabase
             .from('conversaciones')
-            .insert(datos)
+            .insert(payload)
             .select()
             .single();
 
-        if (error) throw new Error(error.message);
+        if (error) {
+            console.error('[ERROR] Supabase insert conversaciones:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code,
+                payload
+            });
+            throw new Error(error.message);
+        }
         return data;
     }
 

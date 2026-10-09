@@ -16,6 +16,20 @@ export class CotizacionesRepository {
         return data.id;
     }
 
+    // obtener cotizaciones de una organizacion (con su estatus y usuario)
+    static async findAllAdmin(organizacionId: string) {
+        const supabase = await createClient();
+
+        const { data, error } = await supabase
+            .from('cotizaciones')
+            .select('*, usuarios(nombre, apellido_paterno), estatus_cotizacion(nombre), cotizacion_actividades(id, titulo_snapshot, notas_cliente)')
+            .eq('organizacion_id', organizacionId)
+            .order('fecha_creacion', { ascending: false });
+
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
     // obtener cotizaciones pendientes de una organizacion
     static async findPendientes(organizacionId: string) {
         const supabase = await createClient();
@@ -23,7 +37,7 @@ export class CotizacionesRepository {
 
         const { data, error } = await supabase
             .from('cotizaciones')
-            .select('*, usuarios(nombre, apellido_paterno)')
+            .select('*, usuarios(nombre, apellido_paterno), estatus_cotizacion(nombre), cotizacion_actividades(id, titulo_snapshot, notas_cliente)')
             .eq('estatus_id', estatusId)
             .eq('organizacion_id', organizacionId)
             .order('fecha_creacion', { ascending: true });
@@ -35,29 +49,44 @@ export class CotizacionesRepository {
     // crear una cotizacion
     static async create(dto: CreateCotizacionDTO, clienteId: string, organizacionId: string) {
         const supabase = await createClient();
-        const estatusId = await this.getEstatusId('pendiente');
 
         const descripcionFinal = dto.notas_cliente 
             ? `${dto.descripcion || ''}\n\nNota del cliente: ${dto.notas_cliente}`.trim()
             : (dto.descripcion ?? null);
 
-        // actividad_catalogo_id referencia lista_actividades, no catalogo_actividades.
-        // Para evitar errores de FK y mantener la lógica simple, se deja null.
-        // El título ya contiene el nombre de la actividad solicitada.
-        const { data, error } = await supabase
-            .from('cotizaciones')
-            .insert({
-                titulo: dto.titulo,
-                descripcion: descripcionFinal,
-                actividad_catalogo_id: null,
-                cliente_id: clienteId,
-                organizacion_id: organizacionId,
-                estatus_id: estatusId,
-            })
-            .select()
-            .single();
+        let data: unknown;
+        if (dto.actividades?.length) {
+            const { data: cotizacion, error } = await supabase.rpc('crear_cotizacion_agrupada', {
+                p_titulo: dto.titulo,
+                p_descripcion: descripcionFinal,
+                p_actividades: dto.actividades,
+            });
 
-        if (error) throw new Error(error.message);
+            if (error) throw new Error(error.message);
+            if (!cotizacion) throw new Error('No se pudo crear la cotización agrupada');
+            data = cotizacion;
+        } else {
+            if (!dto.actividad_catalogo_id) {
+                throw new Error('La cotización debe incluir al menos una actividad');
+            }
+
+            const estatusId = await this.getEstatusId('pendiente');
+            const { data: cotizacion, error } = await supabase
+                .from('cotizaciones')
+                .insert({
+                    titulo: dto.titulo,
+                    descripcion: descripcionFinal,
+                    actividad_catalogo_id: null,
+                    cliente_id: clienteId,
+                    organizacion_id: organizacionId,
+                    estatus_id: estatusId,
+                })
+                .select()
+                .single();
+
+            if (error) throw new Error(error.message);
+            data = cotizacion;
+        }
 
         // Notificar a los administradores
         const { NotificacionesRepository } = await import('./notificaciones.repository');
@@ -171,7 +200,8 @@ export class CotizacionesRepository {
             .from('cotizaciones')
             .select(`
                 id, titulo, descripcion, precio, fecha_creacion,
-                estatus_cotizacion(nombre)
+                estatus_cotizacion(nombre),
+                cotizacion_actividades(id, titulo_snapshot, notas_cliente)
             `)
             .eq('cliente_id', clienteId)
             .order('fecha_creacion', { ascending: false });

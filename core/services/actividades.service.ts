@@ -149,7 +149,10 @@ export class ActividadesService {
         
         if (role === 'contador') {
             if (!cliente_id) throw new Error('El cliente_id es requerido para el contador');
-            // TODO: Se podría validar que el cliente_id realmente pertenezca a la cartera del contador
+            const soloPendientes = url.searchParams.get('solo_pendientes') === 'true';
+            if (soloPendientes) {
+                return await ActividadesRepository.getPendientesByCliente(cliente_id);
+            }
             return await ActividadesRepository.getResultados(cliente_id);
         }
 

@@ -24,7 +24,7 @@ export function ExpandableCard({
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="shrink-0 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div
                 onClick={() => setIsOpen(!isOpen)}
                 className="p-6 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors select-none"
@@ -63,7 +63,7 @@ export function ExpandableCard({
 
 export function ExpandableCardSkeleton() {
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex justify-between items-center animate-pulse">
+        <div className="shrink-0 bg-white rounded-2xl border border-slate-200 p-6 flex justify-between items-center animate-pulse">
             <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3">
                     <div className="h-5 w-40 bg-slate-200 rounded"></div>

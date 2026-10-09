@@ -30,6 +30,9 @@ Las migraciones se encuentran en `supabase/migrations` y se ejecutan en orden cr
 | `20260914015627_seed.sql`                      | Inserta organizaciones, roles, estados y catálogos iniciales.                        |
 | `20260914022601_trigger_user.sql`              | Crea el perfil en `public.usuarios` después de registrar un usuario en `auth.users`. |
 | `20260914223310_add_especialidad_contador.sql` | Agrega la especialidad del contador a la tabla de usuarios.                          |
+| `20261007130000_group_activities_in_quotes.sql` | Permite agrupar servicios en una cotización y crea una actividad por servicio aceptado. |
+
+Nota: las migraciones históricas descritas arriba no están incluidas en este checkout. Restáuralas antes de usar `supabase db push` o `supabase db reset`; la migración nueva es incremental y requiere el esquema existente.
 
 ## 3. Autenticación y usuarios
 
@@ -156,20 +159,30 @@ Estados iniciales incluidos:
 - `completada`
 - `cancelada`
 
+### `cotizacion_actividades`
+
+Relaciona una cotización con cada servicio seleccionado. Guarda el nombre del servicio como `titulo_snapshot`, las notas opcionales del cliente y, después de aceptar la cotización, el `actividad_id` creado para ese servicio.
+
+Cada servicio puede aparecer una sola vez dentro de la misma cotización. La tabla hereda el acceso de lectura de la cotización padre; la creación se realiza de forma atómica mediante `crear_cotizacion_agrupada`.
+
 ### Flujo automático de cotización
 
-El trigger `trg_cotizacion_aceptada` se ejecuta después de actualizar `cotizaciones.estatus_id`.
+El trigger `trg_cotizacion_actividades_agrupadas` se ejecuta antes de actualizar `cotizaciones.estatus_id`. Si existen filas en `cotizacion_actividades`, crea una actividad pendiente por cada servicio y guarda su `actividad_id` en el detalle. El precio total permanece en la cotización; las actividades creadas tienen `precio = NULL`.
+
+Después se ejecuta el trigger legado `trg_cotizacion_aceptada`. Como ya existe una actividad para la cotización, su comprobación de idempotencia evita crear una actividad genérica duplicada. Las cotizaciones antiguas sin filas de detalle siguen usando el comportamiento legado.
 
 Cuando una cotización cambia a `aceptada`:
 
 1. Busca el estado `aceptada`.
 2. Comprueba que antes no estuviera aceptada.
-3. Evita crear otra actividad si ya existe una para la cotización.
+3. Si no hay detalle agrupado, evita crear otra actividad si ya existe una para la cotización.
 4. Busca el contador asignado al cliente.
-5. Crea una actividad con estado `pendiente`.
-6. Copia título, descripción, precio, cliente y organización de la cotización.
+5. Para cotizaciones antiguas sin detalle, crea una actividad con estado `pendiente`.
+6. Para cotizaciones antiguas, copia título, descripción, precio, cliente y organización de la cotización.
 
 Si el cliente no tiene contador asignado, la operación genera un error y no permite aceptar la cotización.
+
+La aceptación o el rechazo se aplica a la cotización completa. Rechazarla no crea actividades.
 
 ## 8. Carpetas y documentos
 
@@ -281,6 +294,7 @@ Los catálogos tienen lectura disponible para cualquier usuario autenticado. La 
 - Un contador puede subir documentos a sus actividades.
 - Un cliente puede subir documentos propios.
 - Solo los participantes pueden leer y enviar mensajes en una conversación.
+- Los detalles de `cotizacion_actividades` solo se consultan si la cotización padre es visible; la creación agrupada se hace mediante la función autenticada `crear_cotizacion_agrupada`.
 
 ## 11. Creación automática de usuarios
 

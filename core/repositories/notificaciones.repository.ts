@@ -20,7 +20,10 @@ export class NotificacionesRepository {
             .order('created_at', { ascending: false })
             .limit(30);
 
-        if (error) throw new Error(error.message);
+        if (error) {
+            console.error('Error al obtener notificaciones:', error.message);
+            return [];
+        }
         return data;
     }
 

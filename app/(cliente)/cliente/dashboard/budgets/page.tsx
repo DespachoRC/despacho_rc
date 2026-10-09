@@ -81,6 +81,7 @@ export default function BudgetsPage() {
                     presupuestos.map((presupuesto) => {
                         const estatusNombre = presupuesto.estatus_cotizacion?.nombre || 'Desconocido';
                         const esPendiente = estatusNombre.toLowerCase() === 'pendiente';
+                        const tienePrecio = presupuesto.precio !== null && presupuesto.precio !== undefined;
                         
                         return (
                             <ExpandableCard
@@ -89,7 +90,7 @@ export default function BudgetsPage() {
                                 estatusText={estatusNombre.toUpperCase()}
                                 estatusVariant={getVariant(estatusNombre)}
                                 subtitulo={presupuesto.titulo || "Solicitud"}
-                                precio={presupuesto.precio ? `$${presupuesto.precio}` : 'Por definir'}
+                                precio={tienePrecio ? `$${presupuesto.precio}` : 'Por definir'}
                             >
                                 <div className="flex flex-col md:flex-row gap-6">
                                     <div className="flex-1 flex flex-col gap-4">
@@ -99,7 +100,33 @@ export default function BudgetsPage() {
                                                 {presupuesto.descripcion || presupuesto.notas_cliente || "No hay detalles adicionales."}
                                             </p>
                                         </div>
-                                        {esPendiente && presupuesto.precio && (
+                                        {!!presupuesto.cotizacion_actividades?.length && (
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-navy-950 mb-1">Servicios incluidos</h4>
+                                                <ul className="space-y-2">
+                                                    {presupuesto.cotizacion_actividades.map((actividad: {
+                                                        id: string;
+                                                        titulo_snapshot: string;
+                                                        notas_cliente: string | null;
+                                                    }) => (
+                                                        <li
+                                                            key={actividad.id}
+                                                            className="rounded-lg bg-slate-50 px-3 py-2"
+                                                        >
+                                                            <p className="text-sm font-medium text-slate-700">
+                                                                {actividad.titulo_snapshot}
+                                                            </p>
+                                                            {actividad.notas_cliente && (
+                                                                <p className="mt-1 text-xs text-slate-500 whitespace-pre-line">
+                                                                    {actividad.notas_cliente}
+                                                                </p>
+                                                            )}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        {esPendiente && tienePrecio && (
                                             <div className="flex items-center gap-3 mt-4">
                                                 <Button
                                                     text="Aceptar Cotización"
@@ -132,6 +159,5 @@ export default function BudgetsPage() {
         </div>
     );
 }
-
 
 

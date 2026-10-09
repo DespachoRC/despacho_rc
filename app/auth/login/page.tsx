@@ -63,6 +63,17 @@ export default function Login() {
             }
 
             setStatus("success");
+
+            // Persiste la sesión de Supabase como cookies HttpOnly en el servidor
+            // para que el middleware pueda leerla en requests subsecuentes
+            await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token,
+                }),
+            });
             
             // determina la ruta destino segun el nombre del rol devuelto por la API
             const role = String(data.role ?? "").toLowerCase();
@@ -72,8 +83,10 @@ export default function Login() {
                 redirectUrl = "/contador/dashboard/clients";
             } else if (role.includes("cliente")) {
                 redirectUrl = "/cliente/dashboard/upload";
+            } else if (role.includes("owner")) {
+                redirectUrl = "/superadmin/dashboard";
             } else {
-                // admin, owner o cualquier otro rol con acceso al panel
+                // admin o cualquier otro rol con acceso al panel
                 redirectUrl = "/dashboard/metrics";
             }
 

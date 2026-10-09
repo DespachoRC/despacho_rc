@@ -23,32 +23,36 @@ export default function UploadPage() {
     const handleSolicitarActividades = async () => {
         if (selectedTareas.length === 0) return;
         setIsSubmitting(true);
-        let errores = 0;
         try {
-            // Generar una solicitud por cada tarea seleccionada
-            for (const tareaId of selectedTareas) {
-                const tipo = tiposTarea.find(t => t.id === tareaId);
-                const res = await fetch('/api/cotizaciones', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        titulo: tipo ? tipo.nombre : 'Solicitud de actividad',
-                        actividad_catalogo_id: tareaId,
-                        notas_cliente: notas[tareaId] || ''
-                    })
-                });
-                if (!res.ok) errores++;
+            const nombres = selectedTareas
+                .map((id) => tiposTarea.find((tipo) => tipo.id === id)?.nombre)
+                .filter((nombre): nombre is string => Boolean(nombre));
+            const titulo = selectedTareas.length === 1
+                ? nombres[0] || 'Solicitud de actividad'
+                : `Solicitud de ${selectedTareas.length} actividades`;
+            const res = await fetch('/api/cotizaciones', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    titulo,
+                    actividades: selectedTareas.map((tareaId) => ({
+                        catalogo_actividad_id: tareaId,
+                        notas_cliente: notas[tareaId]?.trim() || undefined,
+                    })),
+                }),
+            });
+            const json = await res.json().catch(() => null);
+
+            if (!res.ok || !json?.success) {
+                toast.error(json?.error || 'No se pudo generar la cotización. Intenta de nuevo.');
+                return;
             }
-            if (errores === 0) {
-                toast.success('Solicitudes generadas correctamente');
-            } else if (errores < selectedTareas.length) {
-                toast.error(`Se generaron algunas solicitudes, pero ${errores} fallaron. Intenta de nuevo.`);
-            } else {
-                toast.error('No se pudieron generar las solicitudes. Intenta de nuevo.');
-            }
-            setSelectedTareas([]); // limpiar seleccion siempre
+
+            toast.success('Cotización solicitada correctamente');
+            setSelectedTareas([]);
             setNotas({});
         } catch (error) {
+            console.error('Error al generar la cotización', error);
             toast.error('Error de conexión al generar las solicitudes');
         } finally {
             setIsSubmitting(false);
@@ -173,7 +177,9 @@ export default function UploadPage() {
                         <h2 className="text-base font-semibold text-navy-950">
                             ¿Para qué necesitas apoyo este mes?
                         </h2>
-                        <p className="text-xs text-slate-500">Selecciona las actividades y presiona el botón para generar las solicitudes.</p>
+                        <p className="text-xs text-slate-500">
+                            Selecciona una o varias actividades. Se enviarán juntas en una sola cotización con un precio total.
+                        </p>
                     </div>
                 </div>
 
@@ -239,7 +245,9 @@ export default function UploadPage() {
                             disabled={isSubmitting}
                             className="bg-navy-600 hover:bg-navy-700 text-white font-semibold py-2 px-6 rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2"
                         >
-                            {isSubmitting ? <LuLoader className="w-5 h-5 animate-spin" /> : "Solicitar Actividades"}
+                            {isSubmitting
+                                ? <LuLoader className="w-5 h-5 animate-spin" />
+                                : `Solicitar cotización (${selectedTareas.length})`}
                         </button>
                     </div>
                 )}
