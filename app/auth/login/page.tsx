@@ -182,6 +182,12 @@ export default function Login() {
                     >
                         ¿Olvidaste tu contraseña?
                     </Link>
+                    <p className="text-center text-xs leading-5 text-slate-500">
+                        Al usar esta plataforma aceptas nuestros{" "}
+                        <Link href="/terminos-y-condiciones" className="font-semibold text-navy-700 underline underline-offset-2 hover:text-navy-900">
+                            Términos y condiciones
+                        </Link>.
+                    </p>
                 </div>
             </form>
         </div>
