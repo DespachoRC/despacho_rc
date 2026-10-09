@@ -271,4 +271,8 @@
   .scrollbar-hidden::-webkit-scrollbar {
     display: none;
   }
+
+  .terms-copy {
+    @apply space-y-3 text-sm leading-7 text-slate-600;
+  }
 }

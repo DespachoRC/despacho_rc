@@ -3,14 +3,16 @@
 import { ExpandableCard, ExpandableCardSkeleton } from "@/app/components/ui/ExpandableCard";
 import { PageHeader } from "@/app/components/ui/PageHeader";
 import { Button } from "@/app/components/ui/Button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { LuCheck, LuX } from "react-icons/lu";
 import toast from "react-hot-toast";
+import { Tabs } from "@/app/components/ui/Tabs";
 
 export default function BudgetsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [presupuestos, setPresupuestos] = useState<any[]>([]);
     const [procesando, setProcesando] = useState<Record<string, boolean>>({});
+    const [activeTab, setActiveTab] = useState("pendientes");
 
     const fetchPresupuestos = async () => {
         setIsLoading(true);
@@ -30,6 +32,32 @@ export default function BudgetsPage() {
     useEffect(() => {
         fetchPresupuestos();
     }, []);
+
+    const counts = useMemo(() => {
+        return presupuestos.reduce((totals, presupuesto) => {
+            const estatus = String(presupuesto.estatus_cotizacion?.nombre || "")
+                .toLowerCase()
+                .trim();
+
+            if (estatus === "pendiente") totals.pendientes++;
+            else if (estatus === "aceptada") totals.aceptadas++;
+            else if (estatus === "rechazada" || estatus === "cancelada") totals.rechazadas++;
+
+            return totals;
+        }, { pendientes: 0, aceptadas: 0, rechazadas: 0 });
+    }, [presupuestos]);
+
+    const presupuestosFiltrados = useMemo(() => {
+        return presupuestos.filter((presupuesto) => {
+            const estatus = String(presupuesto.estatus_cotizacion?.nombre || "")
+                .toLowerCase()
+                .trim();
+
+            if (activeTab === "pendientes") return estatus === "pendiente";
+            if (activeTab === "aceptadas") return estatus === "aceptada";
+            return estatus === "rechazada" || estatus === "cancelada";
+        });
+    }, [presupuestos, activeTab]);
 
     const handleResponder = async (cotizacionId: string, respuesta: "aceptada" | "rechazada") => {
         setProcesando(prev => ({ ...prev, [cotizacionId]: true }));
@@ -70,6 +98,16 @@ export default function BudgetsPage() {
                 subtitle="Revisa las cotizaciones enviadas por el despacho y toma una decisión" 
             />
 
+            <Tabs
+                tabs={[
+                    { label: "Pendientes", value: "pendientes", count: counts.pendientes },
+                    { label: "Aceptadas", value: "aceptadas", count: counts.aceptadas },
+                    { label: "Rechazadas", value: "rechazadas", count: counts.rechazadas },
+                ]}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+            />
+
             <div className="flex flex-col gap-4">
                 {isLoading ? (
                     <>
@@ -77,8 +115,8 @@ export default function BudgetsPage() {
                         <ExpandableCardSkeleton />
                         <ExpandableCardSkeleton />
                     </>
-                ) : presupuestos.length > 0 ? (
-                    presupuestos.map((presupuesto) => {
+                ) : presupuestosFiltrados.length > 0 ? (
+                    presupuestosFiltrados.map((presupuesto) => {
                         const estatusNombre = presupuesto.estatus_cotizacion?.nombre || 'Desconocido';
                         const esPendiente = estatusNombre.toLowerCase() === 'pendiente';
                         const tienePrecio = presupuesto.precio !== null && presupuesto.precio !== undefined;
@@ -152,7 +190,9 @@ export default function BudgetsPage() {
                     })
                 ) : (
                     <div className="text-sm text-slate-500 italic text-center py-8">
-                        No tienes presupuestos en este momento.
+                        {activeTab === "pendientes" && "No tienes cotizaciones pendientes."}
+                        {activeTab === "aceptadas" && "Aún no tienes cotizaciones aceptadas."}
+                        {activeTab === "rechazadas" && "No tienes cotizaciones rechazadas."}
                     </div>
                 )}
             </div>
