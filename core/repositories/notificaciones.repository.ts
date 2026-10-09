@@ -8,6 +8,13 @@ export interface CrearNotificacionDTO {
     url_destino?: string;
 }
 
+export interface ContactoNotificacion {
+    usuario_id: string;
+    email: string;
+    nombre: string | null;
+    apellido_paterno: string | null;
+}
+
 export class NotificacionesRepository {
 
     public static async getAdminIds(organizacionId: string) {
@@ -27,6 +34,31 @@ export class NotificacionesRepository {
             console.error(`No se encontraron administradores para la organización ${organizacionId}`);
         }
         return adminIds;
+    }
+
+    public static async getContactos(
+        organizacionId: string,
+        usuarioIds: string[]
+    ): Promise<ContactoNotificacion[]> {
+        const ids = [...new Set(usuarioIds)];
+        if (ids.length === 0) return [];
+
+        const supabase = await createClient();
+        const { data, error } = await supabase.rpc('obtener_contactos_notificaciones', {
+            p_organizacion_id: organizacionId,
+            p_usuario_ids: ids,
+        });
+
+        if (error) {
+            throw new Error(`Error al obtener los correos de destinatarios: ${error.message}`);
+        }
+
+        return (Array.isArray(data) ? data : []).filter(
+            (contacto): contacto is ContactoNotificacion =>
+                typeof contacto?.usuario_id === 'string' &&
+                typeof contacto.email === 'string' &&
+                contacto.email.length > 0
+        );
     }
 
     // Insertar juntas las notificaciones de una misma transición de negocio.

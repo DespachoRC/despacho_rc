@@ -1,6 +1,11 @@
 import { createClient } from '@/core/db/server';
 import { CreateCotizacionDTO, FijarPrecioDTO } from '../schemas/cotizacion.schema';
-import { CrearNotificacionDTO, NotificacionesRepository } from './notificaciones.repository';
+import {
+    ContactoNotificacion,
+    CrearNotificacionDTO,
+    NotificacionesRepository,
+} from './notificaciones.repository';
+import { EmailService } from '../services/email.service';
 
 export class CotizacionesRepository {
 
@@ -22,6 +27,63 @@ export class CotizacionesRepository {
         ];
 
         await NotificacionesRepository.crearNotificaciones(notificaciones);
+        await this.enviarCorreosNotificaciones(organizacionId, notificaciones);
+    }
+
+    private static async enviarCorreosNotificaciones(
+        organizacionId: string,
+        notificaciones: CrearNotificacionDTO[]
+    ) {
+        if (notificaciones.length === 0) return;
+
+        let contactos: ContactoNotificacion[];
+        try {
+            contactos = await NotificacionesRepository.getContactos(
+                organizacionId,
+                notificaciones.map(({ usuario_id }) => usuario_id)
+            );
+        } catch (error) {
+            console.error('No se pudieron obtener los destinatarios de correos de cotización:', error);
+            return;
+        }
+
+        const contactosPorId = new Map(contactos.map((contacto) => [contacto.usuario_id, contacto]));
+        const envios = notificaciones.flatMap((notificacion) => {
+            const contacto = contactosPorId.get(notificacion.usuario_id);
+            if (!contacto) {
+                console.error(`No se encontró correo para destinatario de notificación ${notificacion.usuario_id}.`);
+                return [];
+            }
+
+            const nombre = `${contacto.nombre ?? ''} ${contacto.apellido_paterno ?? ''}`.trim();
+            return [{
+                destinatarioId: notificacion.usuario_id,
+                email: {
+                    to: {
+                        email: contacto.email,
+                        name: nombre || contacto.email,
+                    },
+                    subject: notificacion.titulo,
+                    title: notificacion.titulo,
+                    message: notificacion.mensaje,
+                    actionUrl: notificacion.url_destino,
+                },
+            }];
+        });
+
+        const resultados = await Promise.allSettled(
+            envios.map(({ email }) =>
+                EmailService.sendTransactionalEmail(email)
+            )
+        );
+        for (const [index, resultado] of resultados.entries()) {
+            if (resultado.status === 'rejected') {
+                console.error('Falló el envío de correo de cotización:', {
+                    destinatarioId: envios[index]?.destinatarioId,
+                    error: resultado.reason,
+                });
+            }
+        }
     }
 
     // helper privado para obtener el uuid del estatus por nombre
