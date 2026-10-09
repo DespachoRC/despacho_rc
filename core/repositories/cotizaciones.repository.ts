@@ -1,7 +1,90 @@
 import { createClient } from '@/core/db/server';
 import { CreateCotizacionDTO, FijarPrecioDTO } from '../schemas/cotizacion.schema';
+import {
+    ContactoNotificacion,
+    CrearNotificacionDTO,
+    NotificacionesRepository,
+} from './notificaciones.repository';
+import { EmailService } from '../services/email.service';
 
 export class CotizacionesRepository {
+
+    private static async crearNotificacionesDeCotizacion(
+        organizacionId: string,
+        clienteId: string,
+        actorId: string,
+        notificacionAdmin: Omit<CrearNotificacionDTO, 'usuario_id'>,
+        notificacionCliente: Omit<CrearNotificacionDTO, 'usuario_id'>,
+        notificacionesAdicionales: CrearNotificacionDTO[] = []
+    ) {
+        const adminIds = await NotificacionesRepository.getAdminIds(organizacionId);
+        const notificaciones: CrearNotificacionDTO[] = [
+            ...adminIds
+                .filter((usuario_id) => usuario_id !== actorId)
+                .map((usuario_id) => ({ ...notificacionAdmin, usuario_id })),
+            ...(clienteId !== actorId ? [{ ...notificacionCliente, usuario_id: clienteId }] : []),
+            ...notificacionesAdicionales.filter(({ usuario_id }) => usuario_id !== actorId),
+        ];
+
+        await NotificacionesRepository.crearNotificaciones(notificaciones);
+        await this.enviarCorreosNotificaciones(organizacionId, notificaciones);
+    }
+
+    private static async enviarCorreosNotificaciones(
+        organizacionId: string,
+        notificaciones: CrearNotificacionDTO[]
+    ) {
+        if (notificaciones.length === 0) return;
+
+        let contactos: ContactoNotificacion[];
+        try {
+            contactos = await NotificacionesRepository.getContactos(
+                organizacionId,
+                notificaciones.map(({ usuario_id }) => usuario_id)
+            );
+        } catch (error) {
+            console.error('No se pudieron obtener los destinatarios de correos de cotización:', error);
+            return;
+        }
+
+        const contactosPorId = new Map(contactos.map((contacto) => [contacto.usuario_id, contacto]));
+        const envios = notificaciones.flatMap((notificacion) => {
+            const contacto = contactosPorId.get(notificacion.usuario_id);
+            if (!contacto) {
+                console.error(`No se encontró correo para destinatario de notificación ${notificacion.usuario_id}.`);
+                return [];
+            }
+
+            const nombre = `${contacto.nombre ?? ''} ${contacto.apellido_paterno ?? ''}`.trim();
+            return [{
+                destinatarioId: notificacion.usuario_id,
+                email: {
+                    to: {
+                        email: contacto.email,
+                        name: nombre || contacto.email,
+                    },
+                    subject: notificacion.titulo,
+                    title: notificacion.titulo,
+                    message: notificacion.mensaje,
+                    actionUrl: notificacion.url_destino,
+                },
+            }];
+        });
+
+        const resultados = await Promise.allSettled(
+            envios.map(({ email }) =>
+                EmailService.sendTransactionalEmail(email)
+            )
+        );
+        for (const [index, resultado] of resultados.entries()) {
+            if (resultado.status === 'rejected') {
+                console.error('Falló el envío de correo de cotización:', {
+                    destinatarioId: envios[index]?.destinatarioId,
+                    error: resultado.reason,
+                });
+            }
+        }
+    }
 
     // helper privado para obtener el uuid del estatus por nombre
     private static async getEstatusId(nombre: string): Promise<string> {
@@ -88,87 +171,82 @@ export class CotizacionesRepository {
             data = cotizacion;
         }
 
-        // Notificar a los administradores
-        const { NotificacionesRepository } = await import('./notificaciones.repository');
-        NotificacionesRepository.crearNotificacionParaAdmins({
-            titulo: 'Nueva Cotización Solicitada',
-            mensaje: `Un cliente solicitó la cotización "${dto.titulo}".`,
-            tipo: 'cotizacion',
-            url_destino: '/admin/dashboard/quotations',
-        }).catch(console.error);
+        await this.crearNotificacionesDeCotizacion(
+            organizacionId,
+            clienteId,
+            clienteId,
+            {
+                titulo: 'Nueva cotización solicitada',
+                mensaje: `Un cliente solicitó la cotización "${dto.titulo}".`,
+                tipo: 'cotizacion',
+                url_destino: '/dashboard/tasks',
+            },
+            {
+                titulo: 'Solicitud de cotización enviada',
+                mensaje: `Tu solicitud "${dto.titulo}" fue enviada al despacho.`,
+                tipo: 'cotizacion',
+                url_destino: '/cliente/dashboard/budgets',
+            }
+        );
 
         return data;
     }
 
     // admin fija el precio — verifica el estatus antes de actualizar
     // si la cotizacion estaba rechazada, la regresa a pendiente automaticamente
-    static async fijarPrecio(cotizacionId: string, dto: FijarPrecioDTO) {
+    static async fijarPrecio(cotizacionId: string, dto: FijarPrecioDTO, actorId: string) {
         const supabase = await createClient();
-        
-        // Obtener estado actual
-        const { data: current, error: currentError } = await supabase
-            .from('cotizaciones')
-            .select('estatus_id')
-            .eq('id', cotizacionId)
-            .single();
 
-        if (currentError?.code === 'PGRST116') throw new Error('Cotización no encontrada');
-        if (currentError) throw new Error(currentError.message);
-
-        // Validar que el estatus sea pendiente o rechazada
-        const estatusPendiente = await this.getEstatusId('pendiente');
-        const estatusRechazada = await this.getEstatusId('rechazada');
-
-        if (current.estatus_id !== estatusPendiente && current.estatus_id !== estatusRechazada) {
-            throw new Error('No se puede fijar el precio de una cotización que no esté pendiente o rechazada');
-        }
-
-        // obtener cotizacion y su estatus actual
         const { data: cotizacion, error: fetchError } = await supabase
             .from('cotizaciones')
-            .select('id, titulo, cliente_id, estatus_id, estatus_cotizacion(nombre)')
+            .select('id, titulo, cliente_id, organizacion_id, estatus_id')
             .eq('id', cotizacionId)
             .single();
 
         if (fetchError?.code === 'PGRST116') throw new Error('Cotización no encontrada');
         if (fetchError) throw new Error(fetchError.message);
 
-        const estatusActual = (cotizacion?.estatus_cotizacion as unknown as { nombre: string } | null)?.nombre;
-
-        if (estatusActual === 'aceptada') {
-            throw new Error('No se puede modificar el precio de una cotización ya aceptada');
-        }
-        if (estatusActual === 'cancelada') {
-            throw new Error('No se puede modificar el precio de una cotización cancelada');
+        const estatusPendiente = await this.getEstatusId('pendiente');
+        const estatusRechazada = await this.getEstatusId('rechazada');
+        if (cotizacion.estatus_id !== estatusPendiente && cotizacion.estatus_id !== estatusRechazada) {
+            throw new Error('No se puede fijar el precio de una cotización que no esté pendiente o rechazada');
         }
 
-        // si estaba rechazada, se regresa a pendiente al fijar nuevo precio
         const updatePayload: Record<string, unknown> = { precio: dto.precio };
-        if (estatusActual === 'rechazada') {
-            const pendienteId = await this.getEstatusId('pendiente');
-            updatePayload.estatus_id = pendienteId;
+        if (cotizacion.estatus_id === estatusRechazada) {
+            updatePayload.estatus_id = estatusPendiente;
         }
 
         const { data, error } = await supabase
             .from('cotizaciones')
             .update(updatePayload)
             .eq('id', cotizacionId)
+            .eq('estatus_id', cotizacion.estatus_id)
             .select()
             .single();
 
+        if (error?.code === 'PGRST116') {
+            throw new Error('La cotización cambió de estado; actualiza la lista e inténtalo de nuevo');
+        }
         if (error) throw new Error(error.message);
 
-        // Notificar al cliente que su presupuesto está listo
-        if (cotizacion?.cliente_id) {
-            const { NotificacionesRepository } = await import('./notificaciones.repository');
-            NotificacionesRepository.crearNotificacion({
-                usuario_id: cotizacion.cliente_id,
-                titulo: 'Presupuesto Listo',
-                mensaje: `Se asignó precio a tu cotización "${cotizacion.titulo || 'Solicitud'}".`,
+        await this.crearNotificacionesDeCotizacion(
+            cotizacion.organizacion_id,
+            cotizacion.cliente_id,
+            actorId,
+            {
+                titulo: 'Precio de cotización actualizado',
+                mensaje: `Se asignó un precio a la cotización "${cotizacion.titulo || 'Solicitud'}".`,
                 tipo: 'cotizacion',
-                url_destino: '/cliente/dashboard/results',
-            }).catch(console.error);
-        }
+                url_destino: '/dashboard/tasks',
+            },
+            {
+                titulo: 'Presupuesto listo',
+                mensaje: `Ya puedes revisar el precio de tu cotización "${cotizacion.titulo || 'Solicitud'}".`,
+                tipo: 'cotizacion',
+                url_destino: '/cliente/dashboard/budgets',
+            }
+        );
 
         return data;
     }
@@ -177,18 +255,105 @@ export class CotizacionesRepository {
     static async responder(cotizacionId: string, estatusNombre: string, clienteId: string) {
         const supabase = await createClient();
         const estatusId = await this.getEstatusId(estatusNombre);
+        const estatusPendiente = await this.getEstatusId('pendiente');
+
+        const { data: cotizacion, error: fetchError } = await supabase
+            .from('cotizaciones')
+            .select('id, titulo, cliente_id, organizacion_id, estatus_id, precio')
+            .eq('id', cotizacionId)
+            .eq('cliente_id', clienteId)
+            .single();
+
+        if (fetchError?.code === 'PGRST116') throw new Error('Cotización no encontrada o no autorizado');
+        if (fetchError) throw new Error(fetchError.message);
+        if (cotizacion.estatus_id !== estatusPendiente) {
+            throw new Error('Solo puedes responder una cotización pendiente');
+        }
+        if (cotizacion.precio === null) {
+            throw new Error('El despacho aún no ha fijado el precio de esta cotización');
+        }
 
         const { data, error } = await supabase
             .from('cotizaciones')
             .update({ estatus_id: estatusId })
             .eq('id', cotizacionId)
-            .eq('cliente_id', clienteId) // seguridad: solo el dueño puede responder
+            .eq('cliente_id', clienteId)
+            .eq('estatus_id', estatusPendiente)
             .select()
             .single();
 
-        // si no encontró la fila puede ser que el id no sea del cliente
         if (error?.code === 'PGRST116') throw new Error('Cotización no encontrada o no autorizado');
         if (error) throw new Error(error.message);
+
+        const accion = estatusNombre === 'aceptada' ? 'aceptó' : 'rechazó';
+        const adicionales: CrearNotificacionDTO[] = [];
+
+        if (estatusNombre === 'aceptada') {
+            const { data: cliente, error: clienteError } = await supabase
+                .from('usuarios')
+                .select('contador_id')
+                .eq('id', clienteId)
+                .single();
+
+            if (clienteError) {
+                throw new Error(`La cotización fue aceptada, pero no se pudo verificar el contador asignado al cliente: ${clienteError.message}`);
+            }
+
+            const { data: actividades, error: actividadesError } = await supabase
+                .from('actividades')
+                .select('contador_id')
+                .eq('cotizacion_id', cotizacionId);
+
+            if (actividadesError) {
+                throw new Error(`La cotización fue aceptada, pero no se pudieron verificar las actividades asignadas: ${actividadesError.message}`);
+            }
+
+            const actividadesPorContador = new Map<string, number>();
+            for (const actividad of actividades ?? []) {
+                if (actividad.contador_id) {
+                    actividadesPorContador.set(
+                        actividad.contador_id,
+                        (actividadesPorContador.get(actividad.contador_id) ?? 0) + 1
+                    );
+                }
+            }
+
+            if (cliente.contador_id && !actividadesPorContador.has(cliente.contador_id)) {
+                actividadesPorContador.set(cliente.contador_id, 0);
+            }
+
+            for (const [contadorId, totalActividades] of actividadesPorContador) {
+                adicionales.push({
+                    usuario_id: contadorId,
+                    titulo: totalActividades > 0 ? 'Nuevas actividades asignadas' : 'Cotización aceptada',
+                    mensaje: totalActividades > 0
+                        ? `La cotización "${cotizacion.titulo}" fue aceptada y tienes ${totalActividades} actividad${totalActividades === 1 ? '' : 'es'} asignada${totalActividades === 1 ? '' : 's'}.`
+                        : `Tu cliente aceptó la cotización "${cotizacion.titulo}".`,
+                    tipo: totalActividades > 0 ? 'actividad' : 'cotizacion',
+                    url_destino: `/contador/dashboard/clients/details?cliente_id=${clienteId}`,
+                });
+            }
+        }
+
+        await this.crearNotificacionesDeCotizacion(
+            cotizacion.organizacion_id,
+            clienteId,
+            clienteId,
+            {
+                titulo: estatusNombre === 'aceptada' ? 'Cotización aceptada por el cliente' : 'Cotización rechazada por el cliente',
+                mensaje: `El cliente ${accion} la cotización "${cotizacion.titulo}".`,
+                tipo: 'cotizacion',
+                url_destino: '/dashboard/tasks',
+            },
+            {
+                titulo: estatusNombre === 'aceptada' ? 'Cotización aceptada' : 'Cotización rechazada',
+                mensaje: `Tu respuesta para la cotización "${cotizacion.titulo}" fue registrada.`,
+                tipo: 'cotizacion',
+                url_destino: '/cliente/dashboard/budgets',
+            },
+            adicionales
+        );
+
         return data;
     }
 
@@ -211,19 +376,52 @@ export class CotizacionesRepository {
     }
 
     // admin rechaza directamente una cotizacion (sin enviarla al cliente)
-    static async rechazarPorAdmin(cotizacionId: string) {
+    static async rechazarPorAdmin(cotizacionId: string, actorId: string) {
         const supabase = await createClient();
         const estatusId = await this.getEstatusId('rechazada');
+        const estatusPendiente = await this.getEstatusId('pendiente');
+
+        const { data: cotizacion, error: fetchError } = await supabase
+            .from('cotizaciones')
+            .select('id, titulo, cliente_id, organizacion_id, estatus_id')
+            .eq('id', cotizacionId)
+            .single();
+
+        if (fetchError?.code === 'PGRST116') throw new Error('Cotización no encontrada');
+        if (fetchError) throw new Error(fetchError.message);
+        if (cotizacion.estatus_id !== estatusPendiente) {
+            throw new Error('Solo se puede rechazar una cotización pendiente');
+        }
 
         const { data, error } = await supabase
             .from('cotizaciones')
             .update({ estatus_id: estatusId })
             .eq('id', cotizacionId)
+            .eq('estatus_id', estatusPendiente)
             .select()
             .single();
 
         if (error?.code === 'PGRST116') throw new Error('Cotización no encontrada');
         if (error) throw new Error(error.message);
+
+        await this.crearNotificacionesDeCotizacion(
+            cotizacion.organizacion_id,
+            cotizacion.cliente_id,
+            actorId,
+            {
+                titulo: 'Cotización rechazada',
+                mensaje: `La cotización "${cotizacion.titulo}" fue rechazada por el despacho.`,
+                tipo: 'cotizacion',
+                url_destino: '/dashboard/tasks',
+            },
+            {
+                titulo: 'Actualización de cotización',
+                mensaje: `El despacho rechazó la cotización "${cotizacion.titulo}".`,
+                tipo: 'cotizacion',
+                url_destino: '/cliente/dashboard/budgets',
+            }
+        );
+
         return data;
     }
 

@@ -214,7 +214,7 @@
 | Regla | Estado | Detalle |
 |---|---|---|
 | Contador corrige entregable equivocado | ⚠️ | `subirArchivoStorage` usa `upsert: false` — si el archivo ya existe en la misma ruta, falla. Hay que cambiar a `upsert: true` o generar siempre nombre único (actualmente ya genera nombre único con `Date.now()`, pero la actividad queda como `completada` con el documento anterior) |
-| Al corregir entregable, avisar al cliente | ❌ | No existe sistema de notificaciones. Es un gap que depende del sistema de conversaciones o de un mecanismo de notificaciones aparte |
+| Al corregir entregable, avisar al cliente | ❌ | Hay notificaciones para la primera entrega final, pero no existe un flujo de corrección/reemplazo que genere un aviso específico |
 | Cambio de contador en medio de chat → chat se hereda | ✅ | Por diseño de la DB: las conversaciones apuntan al `cliente_id`, y la FK de `contador_id` en `conversaciones` apunta al nuevo. Al cambiar `contador_id` en `usuarios`, el historial queda accesible. Sin embargo, falta actualizar `conversaciones.contador_id` cuando se hace `asignar-contador` — actualmente no lo hace |
 | Contador anterior pierde acceso al chat inmediatamente | ⚠️ | RLS debería cubrir esto, pero `conversaciones.contador_id` no se actualiza automáticamente al reasignar. Hay que agregar esa actualización en `UserRepository.asignarContador` |
 
@@ -280,3 +280,20 @@ Ordenados por prioridad de flujo:
 | 🐛 `fijarPrecio` no valida estado previo | `core/repositories/cotizaciones.repository.ts` | 58 | Verificar que `estatus` sea `pendiente` o `rechazada` |
 | 🐛 `carpetas.service.ts` usa mock UUID | `core/services/carpetas.service.ts` | 5 | Reemplazar con `getAuthUser(request)` |
 | 🐛 `asignar-contador` no actualiza conversaciones | `core/repositories/usuarios.repository.ts` | 166 | Actualizar `conversaciones.contador_id` en el mismo método |
+
+---
+
+## Actualización — cobertura de notificaciones en cotizaciones y asignaciones
+
+La siguiente cobertura corresponde a la implementación actual; las tablas anteriores de este análisis son una fotografía histórica y pueden describir otros gaps ya resueltos.
+
+| Evento | Destinatarios | Condición |
+|---|---|---|
+| Cliente envía una cotización | Admins/owners de su organización, excepto el actor | Solo después de crear la cotización |
+| Admin fija o actualiza el precio | Cliente y admins/owners de la organización, excepto el actor | Solo después de guardar el precio |
+| Cliente acepta o rechaza | Admins/owners de la organización, excepto el actor | Solo desde una cotización pendiente con precio |
+| Admin rechaza | Cliente y admins/owners de la organización, excepto el actor | Solo desde una cotización pendiente |
+| Cliente acepta una cotización | Contador asignado al cliente y contadores asignados a actividades | Cada contador recibe un solo aviso; para el asignado al cliente se envía un aviso aunque no tenga actividades en la cotización |
+| Se asigna o reasigna un contador | Nuevo contador y cliente | No se envía un aviso repetido si ya era el mismo contador |
+
+Las notificaciones se insertan en `notificaciones`, que alimenta la campana y el toast Realtime del encabezado. En las transiciones de cotización no se inserta una notificación para quien ejecuta la acción, evitando duplicar el toast de confirmación de la interfaz. Los eventos de cotización también disparan correos transaccionales por Brevo a esos mismos destinatarios; configure `BREVO_API`, `BREVO_SENDER_EMAIL` (remitente verificado) y opcionalmente `BREVO_SENDER_NAME` y `NEXT_PUBLIC_SITE_URL`. La función `obtener_contactos_notificaciones` del script `supabase/notificaciones-email-contactos.sql` debe instalarse en Supabase para resolver los contactos dentro de la organización sin exponerlos a otros tenants. Los errores de correo se registran en el servidor y no revierten la acción de negocio ni las notificaciones in-app.

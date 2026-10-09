@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { LuBell, LuUser, LuLogOut, LuSettings, LuChevronDown, LuX, LuMessageSquare, LuFileText, LuCheck, LuFolder, LuUserCheck } from "react-icons/lu";
 import { useProfile } from "./ProfileContext";
 import { createClient } from "@/core/db/clients";
+import toast from "react-hot-toast";
 
 interface Notificacion {
     id: string;
+    usuario_id: string;
     titulo: string;
     mensaje: string;
     tipo: string;
@@ -30,7 +32,7 @@ const rolColors: Record<string, string> = {
     cliente:  "bg-slate-600 text-white",
 };
 
-const tipoIcons: Record<string, any> = {
+const tipoIcons = {
     cotizacion: LuFileText,
     mensaje:    LuMessageSquare,
     actividad:  LuCheck,
@@ -48,58 +50,176 @@ export function Header() {
     const profileRef = useRef<HTMLDivElement>(null);
     const notiRef    = useRef<HTMLDivElement>(null);
 
-    const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
+    const [notificacionesState, setNotificacionesState] = useState<{
+        userId: string;
+        items: Notificacion[];
+    } | null>(null);
     const [isLoadingNotis, setIsLoadingNotis] = useState(true);
-    const [activeToast, setActiveToast] = useState<Notificacion | null>(null);
+    const [activeToastState, setActiveToastState] = useState<{
+        userId: string;
+        notification: Notificacion;
+    } | null>(null);
+    const seenNotificationsRef = useRef<{
+        userId: string;
+        ids: Set<string>;
+        initialized: boolean;
+    } | null>(null);
+    const notificaciones = notificacionesState && notificacionesState.userId === profile?.id
+        ? notificacionesState.items
+        : [];
+    const activeToast = activeToastState && activeToastState.userId === profile?.id
+        ? activeToastState.notification
+        : null;
 
-    const fetchNotificaciones = useCallback(async () => {
+    const mostrarToastNotificacion = useCallback((userId: string, notification: Notificacion) => {
+        setActiveToastState({ userId, notification });
+        window.setTimeout(() => {
+            setActiveToastState((current) =>
+                current?.userId === userId && current.notification.id === notification.id
+                    ? null
+                    : current
+            );
+        }, 5000);
+    }, []);
+
+    const agregarNotificacion = useCallback((
+        userId: string,
+        notification: Notificacion,
+        anunciar: boolean
+    ) => {
+        let seen = seenNotificationsRef.current;
+        if (seen?.userId !== userId) {
+            seen = { userId, ids: new Set<string>(), initialized: false };
+            seenNotificationsRef.current = seen;
+        }
+
+        const isNew = !seen.ids.has(notification.id);
+        seen.ids.add(notification.id);
+        setNotificacionesState((current) => {
+            const prev = current?.userId === userId ? current.items : [];
+            return {
+                userId,
+                items: [notification, ...prev.filter((item) => item.id !== notification.id)]
+                    .slice(0, 30),
+            };
+        });
+
+        if (anunciar && isNew) mostrarToastNotificacion(userId, notification);
+    }, [mostrarToastNotificacion]);
+
+    const fetchNotificaciones = useCallback(async (userId: string, anunciarNuevas = false) => {
         try {
-            const res = await fetch('/api/notificaciones');
+            const res = await fetch('/api/notificaciones', { cache: 'no-store' });
             const json = await res.json();
-            if (json.success) {
-                setNotificaciones(json.data ?? []);
+            if (!res.ok || !json.success) {
+                throw new Error(json.error || 'No se pudieron cargar las notificaciones');
+            }
+
+            const notifications = (json.data ?? []) as Notificacion[];
+            const seen = seenNotificationsRef.current;
+            for (const notification of notifications) {
+                agregarNotificacion(userId, notification, anunciarNuevas && Boolean(seen?.initialized));
+            }
+            setNotificacionesState((current) => {
+                const prev = current?.userId === userId ? current.items : [];
+                const byId = new Map<string, Notificacion>();
+                for (const notificacion of notifications) {
+                    byId.set(notificacion.id, notificacion);
+                }
+                for (const notificacion of prev) {
+                    byId.set(notificacion.id, notificacion);
+                }
+                return {
+                    userId,
+                    items: [...byId.values()]
+                        .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+                        .slice(0, 30),
+                };
+            });
+            if (seenNotificationsRef.current?.userId === userId) {
+                seenNotificationsRef.current.initialized = true;
             }
         } catch (error) {
             console.error("Error cargando notificaciones:", error);
+            if (!anunciarNuevas) toast.error("No se pudieron cargar las notificaciones.");
         } finally {
             setIsLoadingNotis(false);
         }
-    }, []);
+    }, [agregarNotificacion]);
 
     // Suscripción Realtime a notificaciones del usuario
     useEffect(() => {
         if (!profile?.id) return;
 
-        fetchNotificaciones();
+        const userId = profile.id;
+        seenNotificationsRef.current = { userId, ids: new Set<string>(), initialized: false };
+        void fetchNotificaciones(userId);
 
         const supabase = createClient();
-        const channel = supabase
-            .channel(`notificaciones:${profile.id}`)
-            .on(
-                "postgres_changes",
-                {
-                    event: "INSERT",
-                    schema: "public",
-                    table: "notificaciones",
-                    filter: `usuario_id=eq.${profile.id}`,
-                },
-                (payload) => {
-                    const nueva = payload.new as Notificacion;
-                    setNotificaciones((prev) => [nueva, ...prev.filter(n => n.id !== nueva.id)]);
-                    
-                    // Mostrar Toast flotante
-                    setActiveToast(nueva);
-                    setTimeout(() => {
-                        setActiveToast((curr) => (curr?.id === nueva.id ? null : curr));
-                    }, 5000);
-                }
-            )
-            .subscribe();
+        let channel: ReturnType<typeof supabase.channel> | null = null;
+        let cancelled = false;
 
-        return () => {
-            supabase.removeChannel(channel);
+        const subscribeToNotifications = async () => {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) {
+                console.error('No se pudo obtener la sesión para Realtime:', error);
+                return;
+            }
+            if (!session?.access_token) {
+                console.error('No hay sesión autenticada disponible para Realtime de notificaciones.');
+                return;
+            }
+
+            await supabase.realtime.setAuth(session.access_token);
+            if (cancelled) return;
+
+            channel = supabase
+                .channel(`notificaciones:${userId}`)
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "INSERT",
+                        schema: "public",
+                        table: "notificaciones",
+                        filter: `usuario_id=eq.${userId}`,
+                    },
+                    (payload) => {
+                        const nueva = payload.new as Notificacion;
+                        if (nueva.usuario_id !== userId) return;
+                        agregarNotificacion(userId, nueva, true);
+                    }
+                )
+                .subscribe((status, subscribeError) => {
+                    if (status === 'SUBSCRIBED') {
+                        if (process.env.NODE_ENV === 'development') {
+                            console.info(`Suscripción Realtime activa para notificaciones (${userId}).`);
+                        }
+                    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                        console.error('Falló la suscripción Realtime de notificaciones:', subscribeError ?? status);
+                    }
+                });
         };
-    }, [profile?.id, fetchNotificaciones]);
+        void subscribeToNotifications();
+
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.access_token) {
+                void supabase.realtime.setAuth(session.access_token);
+            }
+        });
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                void fetchNotificaciones(userId, true);
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            cancelled = true;
+            authSubscription.unsubscribe();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (channel) void supabase.removeChannel(channel);
+        };
+    }, [profile?.id, fetchNotificaciones, agregarNotificacion]);
 
     // Cierra el dropdown al click fuera
     useEffect(() => {
@@ -119,10 +239,24 @@ export function Header() {
 
     const handleNotiClick = async (noti: Notificacion) => {
         if (!noti.leida) {
-            setNotificaciones((prev) =>
-                prev.map((n) => (n.id === noti.id ? { ...n, leida: true } : n))
-            );
-            await fetch(`/api/notificaciones/${noti.id}/leida`, { method: 'PATCH' }).catch(console.error);
+            try {
+                const res = await fetch(`/api/notificaciones/${noti.id}/leida`, { method: 'PATCH' });
+                const result = await res.json();
+                if (!res.ok || !result.success) {
+                    throw new Error(result.error || 'No se pudo marcar la notificación como leída');
+                }
+
+                setNotificacionesState((current) => {
+                    if (!current || current.userId !== profile?.id) return current;
+                    return {
+                        ...current,
+                        items: current.items.map((n) => (n.id === noti.id ? { ...n, leida: true } : n)),
+                    };
+                });
+            } catch (error) {
+                console.error("Error marcando notificación como leída:", error);
+                toast.error("No se pudo marcar la notificación como leída.");
+            }
         }
         setNotiOpen(false);
         if (noti.url_destino) {
@@ -131,8 +265,21 @@ export function Header() {
     };
 
     const handleMarcarTodasLeidas = async () => {
-        setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })));
-        await fetch('/api/notificaciones/marcar-todas', { method: 'POST' }).catch(console.error);
+        try {
+            const res = await fetch('/api/notificaciones/marcar-todas', { method: 'POST' });
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+                throw new Error(result.error || 'No se pudieron marcar todas como leídas');
+            }
+
+            setNotificacionesState((current) => {
+                if (!current || current.userId !== profile?.id) return current;
+                return { ...current, items: current.items.map((n) => ({ ...n, leida: true })) };
+            });
+        } catch (error) {
+            console.error("Error marcando notificaciones como leídas:", error);
+            toast.error("No se pudieron marcar todas como leídas.");
+        }
     };
 
     return (
@@ -180,7 +327,7 @@ export function Header() {
                                     </li>
                                 ) : (
                                     notificaciones.map((noti) => {
-                                        const IconComponent = tipoIcons[noti.tipo] || LuBell;
+                                        const IconComponent = tipoIcons[noti.tipo as keyof typeof tipoIcons] || LuBell;
                                         const fecha = new Date(noti.created_at).toLocaleTimeString("es-MX", {
                                             hour: "2-digit",
                                             minute: "2-digit",
@@ -331,21 +478,22 @@ export function Header() {
             {activeToast && (
                 <div
                     onClick={() => handleNotiClick(activeToast)}
-                    className="fixed bottom-6 right-6 z-[100] max-w-sm bg-navy-950 text-white p-4 rounded-2xl shadow-2xl border border-navy-700 flex items-start gap-3.5 cursor-pointer animate-in fade-in slide-in-from-bottom-5 duration-300 hover:bg-navy-900 transition-colors"
+                    className="fixed bottom-6 right-6 z-[100] max-w-sm bg-white text-navy-950 p-4 rounded-2xl shadow-xl border border-slate-200 flex items-start gap-3.5 cursor-pointer animate-in fade-in slide-in-from-bottom-5 duration-300 hover:border-navy-200 hover:shadow-2xl transition-all"
                 >
-                    <div className="p-2 bg-navy-800 rounded-xl text-emerald-400 mt-0.5 shrink-0">
-                        <LuBell className="w-5 h-5 animate-bounce" />
+                    <div className="p-2 bg-navy-50 rounded-xl text-navy-700 mt-0.5 shrink-0">
+                        <LuBell className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white">{activeToast.titulo}</p>
-                        <p className="text-xs text-slate-300 mt-0.5 leading-snug line-clamp-2">{activeToast.mensaje}</p>
+                        <p className="text-xs font-bold text-navy-950">{activeToast.titulo}</p>
+                        <p className="text-xs text-slate-600 mt-0.5 leading-snug line-clamp-2">{activeToast.mensaje}</p>
                     </div>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            setActiveToast(null);
+                            setActiveToastState(null);
                         }}
-                        className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-navy-800 transition-colors"
+                        aria-label="Cerrar notificación"
+                        className="text-slate-400 hover:text-navy-800 p-1 rounded-lg hover:bg-slate-100 transition-colors"
                     >
                         <LuX className="w-4 h-4" />
                     </button>

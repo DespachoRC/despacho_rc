@@ -8,7 +8,76 @@ export interface CrearNotificacionDTO {
     url_destino?: string;
 }
 
+export interface ContactoNotificacion {
+    usuario_id: string;
+    email: string;
+    nombre: string | null;
+    apellido_paterno: string | null;
+}
+
 export class NotificacionesRepository {
+
+    public static async getAdminIds(organizacionId: string) {
+        const supabase = await createClient();
+        const { data, error } = await supabase.rpc('obtener_admin_ids_notificaciones', {
+            p_organizacion_id: organizacionId,
+        });
+
+        if (error) {
+            throw new Error(`Error al obtener administradores de la organización: ${error.message}`);
+        }
+
+        const adminIds = Array.isArray(data)
+            ? [...new Set(data.filter((id): id is string => typeof id === 'string'))]
+            : [];
+        if (adminIds.length === 0) {
+            console.error(`No se encontraron administradores para la organización ${organizacionId}`);
+        }
+        return adminIds;
+    }
+
+    public static async getContactos(
+        organizacionId: string,
+        usuarioIds: string[]
+    ): Promise<ContactoNotificacion[]> {
+        const ids = [...new Set(usuarioIds)];
+        if (ids.length === 0) return [];
+
+        const supabase = await createClient();
+        const { data, error } = await supabase.rpc('obtener_contactos_notificaciones', {
+            p_organizacion_id: organizacionId,
+            p_usuario_ids: ids,
+        });
+
+        if (error) {
+            throw new Error(`Error al obtener los correos de destinatarios: ${error.message}`);
+        }
+
+        return (Array.isArray(data) ? data : []).filter(
+            (contacto): contacto is ContactoNotificacion =>
+                typeof contacto?.usuario_id === 'string' &&
+                typeof contacto.email === 'string' &&
+                contacto.email.length > 0
+        );
+    }
+
+    // Insertar juntas las notificaciones de una misma transición de negocio.
+    public static async crearNotificaciones(datos: CrearNotificacionDTO[]) {
+        if (datos.length === 0) return;
+
+        const supabase = await createClient();
+        const { error } = await supabase
+            .from('notificaciones')
+            .insert(datos.map((dato) => ({
+                usuario_id: dato.usuario_id,
+                titulo: dato.titulo,
+                mensaje: dato.mensaje,
+                tipo: dato.tipo,
+                url_destino: dato.url_destino ?? null,
+            })));
+
+        if (error) throw new Error(`Error al crear notificaciones: ${error.message}`);
+    }
 
     // Obtener notificaciones del usuario autenticado
     public static async getNotificaciones(userId: string) {
@@ -20,64 +89,23 @@ export class NotificacionesRepository {
             .order('created_at', { ascending: false })
             .limit(30);
 
-        if (error) {
-            console.error('Error al obtener notificaciones:', error.message);
-            return [];
-        }
+        if (error) throw new Error(`Error al obtener notificaciones: ${error.message}`);
         return data;
     }
 
     // Crear una notificación individual
     public static async crearNotificacion(datos: CrearNotificacionDTO) {
-        const supabase = await createClient();
-        const { error } = await supabase
-            .from('notificaciones')
-            .insert({
-                usuario_id: datos.usuario_id,
-                titulo: datos.titulo,
-                mensaje: datos.mensaje,
-                tipo: datos.tipo,
-                url_destino: datos.url_destino ?? null,
-            });
-
-        if (error) {
-            console.error('Error al crear notificación:', error.message);
-            return false;
-        }
+        await this.crearNotificaciones([datos]);
         return true;
     }
 
-    // Crear notificaciones masivas para todos los administradores/owners
-    public static async crearNotificacionParaAdmins(datos: Omit<CrearNotificacionDTO, 'usuario_id'>) {
-        const supabase = await createClient();
-
-        // Buscar IDs de administradores y owners
-        const { data: rolesAdmins } = await supabase
-            .from('roles')
-            .select('id')
-            .in('nombre', ['admin', 'owner']);
-
-        if (!rolesAdmins || rolesAdmins.length === 0) return;
-
-        const roleIds = rolesAdmins.map((r) => r.id);
-
-        const { data: admins } = await supabase
-            .from('usuarios')
-            .select('id')
-            .in('rol_id', roleIds);
-
-        if (!admins || admins.length === 0) return;
-
-        const notificaciones = admins.map((admin) => ({
-            usuario_id: admin.id,
-            titulo: datos.titulo,
-            mensaje: datos.mensaje,
-            tipo: datos.tipo,
-            url_destino: datos.url_destino ?? null,
-        }));
-
-        const { error } = await supabase.from('notificaciones').insert(notificaciones);
-        if (error) console.error('Error al notificar a admins:', error.message);
+    // Crear notificaciones solo para administradores de la organización correspondiente.
+    public static async crearNotificacionParaAdmins(
+        datos: Omit<CrearNotificacionDTO, 'usuario_id'>,
+        organizacionId: string
+    ) {
+        const adminIds = await this.getAdminIds(organizacionId);
+        await this.crearNotificaciones(adminIds.map((usuario_id) => ({ ...datos, usuario_id })));
     }
 
     // Marcar una notificación como leída
