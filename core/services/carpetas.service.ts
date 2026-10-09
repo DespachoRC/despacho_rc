@@ -102,7 +102,7 @@ export class CarpetasService {
                     mensaje: `${nombreCliente} subió "${archivo.name}" a su carpeta general.`,
                     tipo: 'archivo',
                     url_destino: '/admin/dashboard/folders',
-                }).catch(console.error);
+                }, org_id).catch(console.error);
             }
         }
 
@@ -160,4 +160,3 @@ export class CarpetasService {
         return data;
     }
 }
-

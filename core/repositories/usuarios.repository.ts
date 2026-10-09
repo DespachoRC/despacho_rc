@@ -53,6 +53,28 @@ export class UserRepository {
         if (error?.message?.includes('already registered')) throw new Error('El correo electrónico ya está registrado');
         if (error?.message?.includes('password')) throw new Error('La contraseña no cumple los requisitos de seguridad');
         if (error) throw new Error(`Error al crear usuario: ${error.message}`);
+
+        if (userData.contador_id && data.user) {
+            const nombreCliente = `${userData.nombre} ${userData.apellido_paterno}`.trim();
+            const { NotificacionesRepository } = await import('./notificaciones.repository');
+            await NotificacionesRepository.crearNotificaciones([
+                {
+                    usuario_id: userData.contador_id,
+                    titulo: 'Nuevo cliente asignado',
+                    mensaje: `Se te asignó el cliente ${nombreCliente}.`,
+                    tipo: 'asignacion',
+                    url_destino: `/contador/dashboard/clients/details?cliente_id=${data.user.id}`,
+                },
+                {
+                    usuario_id: data.user.id,
+                    titulo: 'Contador asignado',
+                    mensaje: 'El despacho asignó un contador a tu cuenta.',
+                    tipo: 'asignacion',
+                    url_destino: '/cliente/dashboard/settings',
+                },
+            ]);
+        }
+
         return data;
     }
 
@@ -167,26 +189,70 @@ export class UserRepository {
     // asignar contador a un cliente
     public static async asignarContador(clienteId: string, contadorId: string) {
         const supabase = await createClient();
+
+        const { data: cliente, error: clienteError } = await supabase
+            .from('usuarios')
+            .select('id, nombre, apellido_paterno, organizacion_id, contador_id')
+            .eq('id', clienteId)
+            .single();
+
+        if (clienteError?.code === 'PGRST116') throw new Error('Cliente no encontrado');
+        if (clienteError) throw new Error(clienteError.message);
+        if (!cliente.organizacion_id) throw new Error('El cliente no tiene una organización asignada');
+
+        const { data: rolContador, error: rolError } = await supabase
+            .from('roles')
+            .select('id')
+            .eq('nombre', 'contador')
+            .single();
+
+        if (rolError || !rolContador) throw new Error('Rol contador no encontrado');
+
+        const { data: contador, error: contadorError } = await supabase
+            .from('usuarios')
+            .select('id, nombre, apellido_paterno, organizacion_id')
+            .eq('id', contadorId)
+            .eq('organizacion_id', cliente.organizacion_id)
+            .eq('rol_id', rolContador.id)
+            .single();
+
+        if (contadorError?.code === 'PGRST116') {
+            throw new Error('El contador no existe en la organización del cliente');
+        }
+        if (contadorError) throw new Error(contadorError.message);
+
         const { data, error } = await supabase
             .from('usuarios')
             .update({ contador_id: contadorId })
             .eq('id', clienteId)
+            .eq('organizacion_id', cliente.organizacion_id)
             .select()
             .single();
 
         if (error?.code === 'PGRST116') throw new Error('Cliente no encontrado');
         if (error) throw new Error(error.message);
 
-        // Notificar al contador asignado
+        if (cliente.contador_id === contadorId) return data;
+
         const { NotificacionesRepository } = await import('./notificaciones.repository');
-        const clienteNombre = `${data.nombre || 'Cliente'} ${data.apellido_paterno || ''}`.trim();
-        NotificacionesRepository.crearNotificacion({
-            usuario_id: contadorId,
-            titulo: 'Nuevo Cliente Asignado',
-            mensaje: `Se ha asignado la cartera del cliente ${clienteNombre} a tu cuenta.`,
-            tipo: 'asignacion',
-            url_destino: `/contador/dashboard/clients/details?cliente_id=${clienteId}`,
-        }).catch(console.error);
+        const clienteNombre = `${cliente.nombre || 'Cliente'} ${cliente.apellido_paterno || ''}`.trim();
+        const contadorNombre = `${contador.nombre || 'tu contador'} ${contador.apellido_paterno || ''}`.trim();
+        await NotificacionesRepository.crearNotificaciones([
+            {
+                usuario_id: contadorId,
+                titulo: 'Nuevo cliente asignado',
+                mensaje: `Se te asignó el cliente ${clienteNombre}.`,
+                tipo: 'asignacion',
+                url_destino: `/contador/dashboard/clients/details?cliente_id=${clienteId}`,
+            },
+            {
+                usuario_id: clienteId,
+                titulo: 'Contador asignado',
+                mensaje: `El despacho asignó a ${contadorNombre} como tu contador responsable.`,
+                tipo: 'asignacion',
+                url_destino: '/cliente/dashboard/settings',
+            },
+        ]);
 
         return data;
     }

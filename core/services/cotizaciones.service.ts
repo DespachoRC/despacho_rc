@@ -21,14 +21,14 @@ export class CotizacionesService {
 
     // admin fija el precio
     static async fijarPrecio(cotizacionId: string, dto: FijarPrecioDTO, request: Request) {
-        await getAuthUser(request); // verifica que este autenticado
-        return await CotizacionesRepository.fijarPrecio(cotizacionId, dto);
+        const user = await getAuthUser(request);
+        return await CotizacionesRepository.fijarPrecio(cotizacionId, dto, user.id);
     }
 
     // admin rechaza directamente una cotizacion
     static async rechazarPorAdmin(cotizacionId: string, request: Request) {
-        await getAuthUser(request);
-        return await CotizacionesRepository.rechazarPorAdmin(cotizacionId);
+        const user = await getAuthUser(request);
+        return await CotizacionesRepository.rechazarPorAdmin(cotizacionId, user.id);
     }
 
     // cliente acepta o rechaza
