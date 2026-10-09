@@ -8,16 +8,7 @@ import * as z from "zod";
 import { Input } from "@/app/components/ui/Input";
 import { Button } from "@/app/components/ui/Button";
 import { LuLock, LuCircleAlert } from "react-icons/lu";
-import { createBrowserClient } from "@supabase/ssr";
-
-// Cliente con flowType implicit para coincidir con el servidor que emitió el token
-function createImplicitClient() {
-    return createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-        { auth: { flowType: "implicit" } }
-    );
-}
+import { createClient } from "@/core/db/clients";
 
 const schema = z.object({
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
@@ -50,18 +41,14 @@ export default function UpdatePasswordPage() {
             return;
         }
 
-        const supabase = createImplicitClient();
+        const supabase = createClient();
 
-        // Con flowType implicit el SDK detecta el hash fragment
-        // (#access_token=...&type=recovery) y dispara PASSWORD_RECOVERY.
+        // El callback PKCE canjea el código y guarda la sesión en cookies.
+        // El cliente del navegador la recupera desde esas mismas cookies.
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === "PASSWORD_RECOVERY") {
                 setPageState("ready");
-            } else if (event === "SIGNED_IN" && session) {
-                // Llega como SIGNED_IN cuando el exchange PKCE ya ocurrió en /api/auth/callback
-                setPageState("ready");
-            } else if (event === "INITIAL_SESSION" && session) {
-                // En producción con PKCE, la sesión ya está activa al cargar la página
+            } else if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
                 setPageState("ready");
             }
         });
@@ -81,7 +68,7 @@ export default function UpdatePasswordPage() {
         setApiError(null);
         setIsLoading(true);
         try {
-            const supabase = createImplicitClient();
+            const supabase = createClient();
             const { error } = await supabase.auth.updateUser({
                 password: values.password,
             });
